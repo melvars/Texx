@@ -18,7 +18,7 @@
     "watch": "npm run build && onchange public/styles/* -- npm run css & watchify public/scripts/*.js -o dist/app.js -v",
     "css": "node-sass public/styles/main.scss dist/app.css --output-style compressed",
     "build": "rm -r dist/* && npm run css && browserify public/scripts/*.js -o dist/app.js && cp public/fonts/* dist/",
-    "server": "peerjs --port 4242 --key decentralisawesome"
+      "server": "peerjs --port 4242"
   },
   "keywords": [
     "express",
