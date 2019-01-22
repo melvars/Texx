@@ -1,21 +1,21 @@
 extends layout
 
 block content
-  header
-    i.nes-icon
-    h1 Texx
-    p Decentralized and encrypted communication
-  section.nes-container.with-title
-    h2.title Chat Window
-    .containers
-        pre#incoming.nes-container.with-title
-      form.form.nes-container.with-title
-        .field
-            label(for='outgoing') Message
-            textarea#outgoing.nes-textarea
-        button(type=submit).nes-btn.is-primary Submit
+    header
+        i.nes-icon
+        h1 Texx
+        p Decentralized and encrypted communication
+    section.nes-container.with-title
+        h2.title Chat Window
+        .containers
+            pre#incoming.nes-container.with-title
         form.form.nes-container.with-title
             .field
-                label(for='user_id') Your friend's ID
-                input#user_id.nes-input
+                label(for='outgoing') Message
+                textarea#outgoing.nes-textarea
             button(type=submit).nes-btn.is-primary Submit
+            form.form.nes-container.with-title
+                .field
+                    label(for='user_id') Your friend's ID
+                    input#user_id.nes-input
+                button(type=submit).nes-btn.is-primary Submit
