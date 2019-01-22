@@ -1,5 +1,16 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+  header
+    i.nes-icon
+    h1 Texx
+    p Decentralized and encrypted communication
+  section.nes-container.with-title
+    h2.title Chat Window
+    .containers
+      form.form.nes-container.with-title
+        .field
+          label(for='incoming')
+          textarea#incoming.nes-textarea
+        button(type=submit).nes-btn.is-primary Submit
+      pre#outgoing.nes-container.with-title

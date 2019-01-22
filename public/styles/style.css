@@ -1,8 +1,13 @@
-body {
-  padding: 50px;
-  font: 14px sans-serif;
+@font-face {
+  font-family: "Kongtype";
+  src: url("/kongtext.ttf") format("truetype");
 }
 
-a {
-  color: #00B7FF;
+* {
+  font-family: "Kongtype" !important;
+}
+
+body {
+  padding: 0 2rem !important;
+  margin: 2rem !important;
 }
