@@ -8,9 +8,14 @@ block content
   section.nes-container.with-title
     h2.title Chat Window
     .containers
+        pre#incoming.nes-container.with-title
       form.form.nes-container.with-title
         .field
-          label(for='incoming')
-          textarea#incoming.nes-textarea
+            label(for='outgoing') Message
+            textarea#outgoing.nes-textarea
         button(type=submit).nes-btn.is-primary Submit
-      pre#outgoing.nes-container.with-title
+        form.form.nes-container.with-title
+            .field
+                label(for='user_id') Your friend's ID
+                input#user_id.nes-input
+            button(type=submit).nes-btn.is-primary Submit
