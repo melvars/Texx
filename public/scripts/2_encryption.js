@@ -85,4 +85,9 @@ function testEncryption() {
     })
 }
 
-testEncryption();
+// TODO: Export as module or sth
+// REMEMBER: UGLY EXPORT!
+window.generateKeys = generateKeys;
+window.encrypt = encrypt;
+window.decrypt = decrypt;
+window.testEncryption = testEncryption;

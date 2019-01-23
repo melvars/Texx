@@ -66,3 +66,5 @@ $(document).ready(() => {
 
     $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))
 });
+
+testEncryption();
