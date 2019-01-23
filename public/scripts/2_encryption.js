@@ -16,10 +16,11 @@ async function generateKeys(userId, passphrase) {
         passphrase: passphrase
     };
 
-    openpgp.generateKey(options).then((key) => {
+    await openpgp.generateKey(options).then((key) => {
         localStorage.setItem('private_key', key.privateKeyArmored);
         localStorage.setItem('public_key', key.publicKeyArmored);
         localStorage.setItem('revocation_certificate', key.revocationCertificate);
+        console.log('[LOG] Successfully generated and stored keys!')
     });
 }
 
@@ -72,6 +73,17 @@ async function decrypt(data, publicKey, privateKey, passphrase) {
 }
 
 /**
+ * Checks whether the user has keys
+ * @returns {boolean}
+ */
+function isEncrypted() {
+    const hasPrivateKey = localStorage.getItem('private_key') !== null;
+    const hasPublicKey = localStorage.getItem('public_key') !== null;
+    const hasRevocationCertificate = localStorage.getItem('revocation_certificate') !== null;
+    return (hasPrivateKey && hasPublicKey && hasRevocationCertificate);
+}
+
+/**
  * Just a general test case
  */
 function testEncryption() {
@@ -85,9 +97,8 @@ function testEncryption() {
     })
 }
 
-// TODO: Export as module or sth
-// REMEMBER: UGLY EXPORT!
-window.generateKeys = generateKeys;
-window.encrypt = encrypt;
-window.decrypt = decrypt;
-window.testEncryption = testEncryption;
+exports.generate = generateKeys;
+exports.encrypt = encrypt;
+exports.decrypt = decrypt;
+exports.check = isEncrypted;
+exports.test = testEncryption;
