@@ -62,4 +62,4 @@ typings/
 
 # Custom
 .idea
-dist
+dist/*
