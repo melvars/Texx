@@ -23,6 +23,12 @@ async function generateKeys(userId, passphrase) {
     });
 }
 
+/**
+ * Encrypts the data with a public key (e.g the one of the person with which you're chatting)
+ * @param data
+ * @param publicKey
+ * @returns {Promise<void>}
+ */
 async function encrypt(data, publicKey) {
     //const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
     //await privateKeyObj.decrypt(passphrase);
@@ -40,6 +46,14 @@ async function encrypt(data, publicKey) {
     })
 }
 
+/**
+ * Decrypts encrypted data with own encrypted private key and verifies the data with the public key
+ * @param data
+ * @param publicKey
+ * @param privateKey
+ * @param passphrase
+ * @returns {Promise<void>}
+ */
 async function decrypt(data, publicKey, privateKey, passphrase) {
     const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
     await privateKeyObj.decrypt(passphrase);
@@ -57,6 +71,9 @@ async function decrypt(data, publicKey, privateKey, passphrase) {
     })
 }
 
+/**
+ * Just a general test case
+ */
 function testEncryption() {
     generateKeys('test_id', 'supersecure').then(() => {
         encrypt('The meaning of life', localStorage.getItem('public_key')).then(() => {
