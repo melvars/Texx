@@ -47,6 +47,7 @@
     "nanoid": "^2.0.1",
     "node-sass": "^4.11.0",
     "onchange": "^5.2.0",
+      "openpgp": "^4.4.5",
     "peer": "^0.2.10",
     "pug": "^2.0.0-beta11",
     "rimraf": "^2.6.2"
@@ -66,6 +67,9 @@
     "nodemon": "^1.18.9",
     "supertest": "^3.0.0",
     "watchify": "^3.11.0"
+  },
+    "browser": {
+        "openpgp": "openpgp/dist/openpgp.min.js"
   },
   "babel": {
     "presets": [
