@@ -2,7 +2,8 @@
 
 ## Dev instructions:
 * clone repo
-* npm install
+* copy `.env.example` to `.env`
+* `npm install`
 * run these in different windows/tabs
-  * npm run dev
-  * npm run server
+  * `npm run dev`
+  * `npm run server`
