@@ -1,21 +1,25 @@
 extends layout
 
 block content
-    header
-        i.nes-icon
-        h1 Texx
-        p Decentralized and encrypted communication
-    section.nes-container.with-title
-        h2.title Chat Window
-        .containers
-            pre#messages.nes-container.with-title
-        .form.nes-container.with-title
-            .field
-                label(for='message') Message
-                textarea#message.nes-textarea
-            button#message_form.nes-btn.is-primary(type=submit) Submit
-        .nes-container.with-title
-            .field
-                label(for='user_id') Your friend's ID
-                input#user_id.nes-input
-            button#user_id_form.nes-btn.is-primary(type=submit) Submit
+    button.button.add-user-button.is-big.is-outlined.is-info(toggle-contact-modal)
+        i.fas.fa-plus
+
+    .columns.level.main
+        .section.column.level-right
+            #messages
+            .message-field
+                input#message.message-input.input(placeholder='Enter a message')
+                button#send_message.message-button.button.is-success(type=submit)
+                    i.fas.fa-paper-plane
+
+    .modal#add_contact_modal
+        .modal-background
+        .modal-card
+            header.modal-card-head
+                p.modal-card-title Add a contact
+                button.delete(aria-label='close', toggle-contact-modal)
+            section.modal-card-body
+                input#user_id.input.is-focused(placeholder='Contact ID')
+            footer.modal-card-foot
+                button#add_user_id.button.is-success(toggle-contact-modal) Add
+                button.button(aria-label='close', toggle-contact-modal) Cancel

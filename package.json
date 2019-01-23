@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\" & npm run watch",
     "watch": "npm run build && onchange public/styles/* -- npm run css & watchify public/scripts/*.js -o dist/app.js -v",
-    "css": "node-sass public/styles/main.scss dist/app.css --output-style compressed",
+      "css": "node-sass public/styles/main.sass dist/app.css --output-style compressed",
     "build": "rm -r dist/* && npm run css && browserify public/scripts/*.js -o dist/app.js && cp public/fonts/* dist/",
       "server": "node src/server.js"
   },
@@ -38,6 +38,7 @@
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "body-parser": "^1.18.2",
+      "bulma": "^0.7.2",
     "drag-drop": "^4.2.0",
     "ejs": "^2.6.1",
     "express": "^4.16.4",
@@ -51,6 +52,7 @@
     "rimraf": "^2.6.2"
   },
   "devDependencies": {
+      "@fortawesome/fontawesome-free": "^5.6.3",
     "babel-eslint": "^8.2.3",
     "babel-jest": "^21.2.0",
     "babel-register": "^6.26.0",

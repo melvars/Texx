@@ -28,6 +28,7 @@ function connect(id) {
     // setup listener
     connectedUser.on('open', () => {
         // TODO: Activate chat or sth
+        // TODO: Send public key
     });
 
     connectedUser.on('data', message => receivedMessage(message))
@@ -50,10 +51,9 @@ function sendMessage(message) {
  */
 function receivedMessage(message, self = false) {
     if (self) {
-        $('#messages').append(`<span style="color: green">${message}</span><hr>`);
+        $('#messages').append(`<span style="color: green">${message}</span><br>`);
     } else {
-        $('#user_id').val(connectedUserId); // TODO: WTH DOESNT THIS WORK LOL
-        $('#messages').append(`${message}<hr>`);
+        $('#messages').append(`${message}<br>`);
     }
 }
 
@@ -61,6 +61,8 @@ function receivedMessage(message, self = false) {
  * Events after load
  */
 $(document).ready(() => {
-    $('#user_id_form').on('click', () => connect($('#user_id').val()));
-    $('#message_form').on('click', () => sendMessage($('#message').val()));
+    $('#add_user_id').on('click', () => connect($('#user_id').val()));
+    $('#send_message').on('click', () => sendMessage($('#message').val()));
+
+    $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))
 });
