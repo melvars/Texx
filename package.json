@@ -17,7 +17,7 @@
     "dev": "nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\" & npm run watch",
     "watch": "npm run build && onchange public/styles/* -- npm run css & watchify public/scripts/*.js -o dist/app.js -v",
       "css": "node-sass public/styles/main.sass dist/app.css --output-style compressed",
-    "build": "rm -r dist/* && npm run css && browserify public/scripts/*.js -o dist/app.js && cp public/fonts/* dist/",
+      "build": "rm -r dist/* && npm run css && browserify public/scripts/*.js -o dist/app.js && cp public/additional/* dist/",
       "server": "node src/server.js"
   },
   "keywords": [
@@ -33,6 +33,7 @@
     "eslint"
   ],
   "dependencies": {
+      "alasql": "^0.4.11",
     "babel-cli": "^6.26.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",

@@ -2,12 +2,12 @@ const $ = require('jquery');
 const encryption = require('./2_encryption');
 const nanoid = require('nanoid');
 
-let connectedPeers = [];
+let connectedPeers = []; // TODO: Save new peers in array
 let connectedPeer;
 const peerId = nanoid();
 
 // setup encryption
-if (encryption.check()) {
+if (encryption.setup() && encryption.check()) {
     // TODO: Ask for password
     chat();
 } else {
