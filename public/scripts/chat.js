@@ -8,7 +8,7 @@ const peerId = nanoid();
 
 // setup encryption
 if (encryption.setup() && encryption.check()) {
-    // TODO: Ask for password
+    // TODO: Ask for passphrase
     chat();
 } else {
     console.log('[LOG] No existing keys found! Generating...');
@@ -23,8 +23,9 @@ function chat() {
     peer.on('error', err => console.error(err));
     peer.on('connection', conn => {
         connectedPeer = conn;
-        console.log('[LOG] Connected with', conn.peer);
-        conn.on('data', message => receivedMessage(message));
+        console.log('[LOG] Connected with', connectedPeer.peer);
+        connectedPeer.on('open', () => transferKey(encryption.getPublic()));
+        connectedPeer.on('data', message => receivedMessage(message));
     });
 
     /**
@@ -36,13 +37,8 @@ function chat() {
         console.log('[LOG] Connecting to', id);
         console.log('[LOG] Your connection ID is', connectionId);
         connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
-
-        // setup listener
-        connectedPeer.on('open', () => {
-            // TODO: Activate chat or sth
-            transferKey(encryption.getPublic());
-        });
-
+        console.log('[LOG] Connected with', connectedPeer.peer);
+        connectedPeer.on('open', () => transferKey(encryption.getPublic()));
         connectedPeer.on('data', message => receivedMessage(message))
     }
 
@@ -52,8 +48,10 @@ function chat() {
      */
     function sendMessage(message) {
         console.log(`[LOG] Sending message ${message} to ${connectedPeer.peer}`);
-        connectedPeer.send({type: 'text', data: message});
-        receivedMessage(message, true);
+        encryption.encrypt(message, encryption.get(connectedPeer.peer)).then(encrypted => {
+            connectedPeer.send({type: 'text', data: encrypted});
+            receivedMessage(message, true);
+        })
     }
 
     /**
@@ -74,11 +72,10 @@ function chat() {
         if (self) {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
-            if (message.type === 'text')
-                $('#messages').append(`${message.data}<br>`);
-            else if (message.type === 'key') {
-                console.log(connectedPeer.peer);
-                console.log(peer.connections);
+            if (message.type === 'text') {
+                encryption.decrypt(message.data, encryption.get(connectedPeer.peer), encryption.getPrivate(), 'supersecure')
+                    .then(plaintext => $('#messages').append(`${plaintext}<br>`));
+            } else if (message.type === 'key') {
                 encryption.store(connectedPeer.peer, message.data)
             }
         }
