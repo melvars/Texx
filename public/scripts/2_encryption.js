@@ -5,7 +5,7 @@ openpgp.initWorker({path: 'openpgp.worker.js'});
 let encrypted, decrypted; // REMEMBER: Remove testing variables (leaking)
 
 function setupDatabase() {
-    // REMEMBER: "key" and "type" are names reserved for SQL
+    // REMEMBER: "key" and "type" are reserved names for SQL
     alasql('CREATE localstorage DATABASE IF NOT EXISTS texx');
     alasql('ATTACH localStorage DATABASE texx AS db');
     alasql('CREATE TABLE IF NOT EXISTS db.own_keys (key_type STRING, key_data STRING)');
