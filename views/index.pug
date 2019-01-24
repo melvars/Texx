@@ -1,7 +1,7 @@
 extends layout
 
 block content
-    button.button.add-user-button.is-big.is-outlined.is-info(toggle-contact-modal)
+    button.button.add-peer-button.is-big.is-outlined.is-info(toggle-contact-modal)
         i.fas.fa-plus
 
     .columns.level.main
@@ -19,7 +19,7 @@ block content
                 p.modal-card-title Add a contact
                 button.delete(aria-label='close', toggle-contact-modal)
             section.modal-card-body
-                input#user_id.input.is-focused(placeholder='Contact ID')
+                input#peer_id.input.is-focused(placeholder='Contact ID')
             footer.modal-card-foot
-                button#add_user_id.button.is-success(toggle-contact-modal) Add
+                button#add_peer_id.button.is-success(toggle-contact-modal) Add
                 button.button(aria-label='close', toggle-contact-modal) Cancel

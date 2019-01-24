@@ -2,8 +2,9 @@ const $ = require('jquery');
 const encryption = require('./2_encryption');
 const nanoid = require('nanoid');
 
-let connectedUserId, connectedUser;
-const userId = nanoid();
+let connectedPeers = [];
+let connectedPeer;
+const peerId = nanoid();
 
 // setup encryption
 if (encryption.check()) {
@@ -11,53 +12,61 @@ if (encryption.check()) {
     chat();
 } else {
     console.log('[LOG] No existing keys found! Generating...');
-    encryption.generate(userId, 'supersecure').then(() => chat());
+    encryption.generate(peerId, 'supersecure').then(() => chat());
 }
 
 function chat() {
-    const peer = new Peer(userId, {host: '127.0.0.1', port: 4242, path: '/', debug: 3});
+    const peer = new Peer(peerId, {host: '127.0.0.1', port: 4242, path: '/', debug: 0});
 
     // Peer events
     peer.on('open', id => console.log('[LOG] Your ID is', id));
     peer.on('error', err => console.error(err));
     peer.on('connection', conn => {
-        connectedUser = conn;
+        connectedPeer = conn;
         console.log('[LOG] Connected with', conn.peer);
         conn.on('data', message => receivedMessage(message));
     });
 
     /**
-     * Connects to an user via his id
+     * Connects to a peer via his id
      * @param id
      */
     function connect(id) {
         const connectionId = nanoid();
         console.log('[LOG] Connecting to', id);
         console.log('[LOG] Your connection ID is', connectionId);
-        connectedUser = peer.connect(id, {label: connectionId, reliable: true});
-        connectedUserId = id;
+        connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
 
         // setup listener
-        connectedUser.on('open', () => {
+        connectedPeer.on('open', () => {
             // TODO: Activate chat or sth
-            // TODO: Send public key
+            transferKey(encryption.getPublic());
         });
 
-        connectedUser.on('data', message => receivedMessage(message))
+        connectedPeer.on('data', message => receivedMessage(message))
     }
 
     /**
-     * Sends a message to the user with which you're currently connected
+     * Sends a message to the peer with which you're currently connected
      * @param message
      */
     function sendMessage(message) {
-        console.log(`[LOG] Sending message ${message} to ${connectedUserId}`);
-        connectedUser.send(message);
+        console.log(`[LOG] Sending message ${message} to ${connectedPeer.peer}`);
+        connectedPeer.send({type: 'text', data: message});
         receivedMessage(message, true);
     }
 
     /**
-     * Renders the incoming messages
+     * Transfers the (public) key to the currently connected peer
+     * @param key
+     */
+    function transferKey(key) {
+        console.log(`[LOG] Transferring key to ${connectedPeer.peer}`);
+        connectedPeer.send({type: 'key', data: key});
+    }
+
+    /**
+     * Renders and processes the incoming messages
      * @param message
      * @param self
      */
@@ -65,7 +74,13 @@ function chat() {
         if (self) {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
-            $('#messages').append(`${message}<br>`);
+            if (message.type === 'text')
+                $('#messages').append(`${message.data}<br>`);
+            else if (message.type === 'key') {
+                console.log(connectedPeer.peer);
+                console.log(peer.connections);
+                encryption.store(connectedPeer.peer, message.data)
+            }
         }
     }
 
@@ -73,7 +88,7 @@ function chat() {
      * Events after load
      */
     $(document).ready(() => {
-        $('#add_user_id').on('click', () => connect($('#user_id').val()));
+        $('#add_peer_id').on('click', () => connect($('#peer_id').val()));
         $('#send_message').on('click', () => sendMessage($('#message').val()));
 
         $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))

@@ -5,13 +5,13 @@ let encrypted, decrypted; // REMEMBER: Remove testing variables (leaking)
 
 /**
  * Generates and stores encrypted private key, public key and a revocation certificate
- * @param userId
+ * @param peerId
  * @param passphrase
  * @returns {Promise<void>}
  */
-async function generateKeys(userId, passphrase) {
+async function generateKeys(peerId, passphrase) {
     const options = {
-        userIds: [{name: userId}],
+        peerIds: [{name: peerId}],
         numBits: 4096,
         passphrase: passphrase
     };
@@ -25,7 +25,23 @@ async function generateKeys(userId, passphrase) {
 }
 
 /**
- * Encrypts the data with a public key (e.g the one of the person with which you're chatting)
+ * Gets the peers private key
+ * @returns {string}
+ */
+function getPrivateKey() {
+    return localStorage.getItem('private_key');
+}
+
+/**
+ * Gets the peers public key
+ * @returns {string}
+ */
+function getPublicKey() {
+    return localStorage.getItem('public_key');
+}
+
+/**
+ * Encrypts the data with a public key (e.g the one of the peer with which you're chatting)
  * @param data
  * @param publicKey
  * @returns {Promise<void>}
@@ -73,7 +89,7 @@ async function decrypt(data, publicKey, privateKey, passphrase) {
 }
 
 /**
- * Checks whether the user has keys
+ * Checks whether the peer has keys
  * @returns {boolean}
  */
 function isEncrypted() {
@@ -81,6 +97,16 @@ function isEncrypted() {
     const hasPublicKey = localStorage.getItem('public_key') !== null;
     const hasRevocationCertificate = localStorage.getItem('revocation_certificate') !== null;
     return (hasPrivateKey && hasPublicKey && hasRevocationCertificate);
+}
+
+/**
+ * Stores the public key of a peer
+ * @param peerId
+ * @param key
+ */
+function storePublicKey(peerId, key) {
+    localStorage.setItem(peerId, key);
+    console.log('[LOG] Stored public key of ' + peerId);
 }
 
 /**
@@ -98,7 +124,10 @@ function testEncryption() {
 }
 
 exports.generate = generateKeys;
+exports.getPrivate = getPrivateKey;
+exports.getPublic = getPublicKey;
 exports.encrypt = encrypt;
 exports.decrypt = decrypt;
 exports.check = isEncrypted;
+exports.store = storePublicKey;
 exports.test = testEncryption;
