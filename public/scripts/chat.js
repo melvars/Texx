@@ -7,13 +7,16 @@ let connectedPeer;
 const peerId = nanoid();
 
 // setup encryption
-if (encryption.setup() && encryption.check()) {
-    // TODO: Ask for passphrase
-    chat();
-} else {
-    console.log('[LOG] No existing keys found! Generating...');
-    encryption.generate(peerId, 'supersecure').then(() => chat());
-}
+(async () => {
+    if (localStorage.getItem('database') === 'success' && encryption.setupConn() && await encryption.check()) {
+        // TODO: Ask for passphrase
+        chat();
+    } else {
+        console.log('[LOG] No existing keys found! Generating...');
+        encryption.setup();
+        (async () => await encryption.generate(peerId, 'supersecure').then(() => chat()))()
+    }
+})();
 
 function chat() {
     const peer = new Peer(peerId, {host: '127.0.0.1', port: 4242, path: '/', debug: 0});
@@ -24,8 +27,8 @@ function chat() {
     peer.on('connection', conn => {
         connectedPeer = conn;
         console.log('[LOG] Connected with', connectedPeer.peer);
-        connectedPeer.on('open', () => transferKey(encryption.getPublic()));
-        connectedPeer.on('data', message => receivedMessage(message));
+        connectedPeer.on('open', async () => await encryption.getPublic().then(res => transferKey(res)));
+        connectedPeer.on('data', async message => await receivedMessage(message));
     });
 
     /**
@@ -38,19 +41,22 @@ function chat() {
         console.log('[LOG] Your connection ID is', connectionId);
         connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
         console.log('[LOG] Connected with', connectedPeer.peer);
-        connectedPeer.on('open', () => transferKey(encryption.getPublic()));
-        connectedPeer.on('data', message => receivedMessage(message))
+        connectedPeer.on('open', async () => await encryption.getPublic().then(res => transferKey(res)));
+        connectedPeer.on('data', async message => await receivedMessage(message))
     }
 
     /**
      * Sends a message to the peer with which you're currently connected
      * @param message
+     * @returns {Promise<void>}
      */
-    function sendMessage(message) {
+    async function sendMessage(message) {
         console.log(`[LOG] Sending message ${message} to ${connectedPeer.peer}`);
-        encryption.encrypt(message, encryption.get(connectedPeer.peer)).then(encrypted => {
-            connectedPeer.send({type: 'text', data: encrypted});
-            receivedMessage(message, true);
+        await encryption.get(connectedPeer.peer).then(async peerKey => {
+            await encryption.encrypt(message, peerKey).then(async encrypted => {
+                connectedPeer.send({type: 'text', data: encrypted});
+                await receivedMessage(message, true);
+            })
         })
     }
 
@@ -68,15 +74,20 @@ function chat() {
      * @param message
      * @param self
      */
-    function receivedMessage(message, self = false) {
+    async function receivedMessage(message, self = false) {
         if (self) {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
             if (message.type === 'text') {
-                encryption.decrypt(message.data, encryption.get(connectedPeer.peer), encryption.getPrivate(), 'supersecure')
-                    .then(plaintext => $('#messages').append(`${plaintext}<br>`));
+                // TODO: Cleanup async method calls
+                await encryption.get(connectedPeer.peer).then(async peerKey => {
+                    await encryption.getPrivate().then(async privateKey => {
+                        await encryption.decrypt(message.data, peerKey, privateKey, 'supersecure')
+                            .then(plaintext => $('#messages').append(`${plaintext}<br>`));
+                    })
+                })
             } else if (message.type === 'key') {
-                encryption.store(connectedPeer.peer, message.data)
+                await encryption.store(connectedPeer.peer, message.data)
             }
         }
     }
@@ -86,7 +97,7 @@ function chat() {
      */
     $(document).ready(() => {
         $('#add_peer_id').on('click', () => connect($('#peer_id').val()));
-        $('#send_message').on('click', () => sendMessage($('#message').val()));
+        $('#send_message').on('click', async () => await sendMessage($('#message').val()));
 
         $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))
     });
