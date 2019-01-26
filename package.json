@@ -46,6 +46,7 @@
         "jquery": "^3.3.1",
         "morgan": "^1.9.0",
         "nanoid": "^2.0.1",
+        "nanoid-dictionary": "^2.0.0",
         "onchange": "^5.2.0",
         "openpgp": "^4.4.5",
         "peer": "^0.2.10",

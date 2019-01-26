@@ -1,10 +1,11 @@
 const $ = require('jquery');
 const encryption = require('./2_encryption');
-const nanoid = require('nanoid');
+const generate = require('nanoid/generate');
+const nolookalikes = require('nanoid-dictionary/nolookalikes');
 
 let connectedPeers = []; // TODO: Save new peers in array
 let connectedPeer;
-const peerId = nanoid();
+const peerId = generate(nolookalikes, 16);
 
 // setup encryption
 (async () => {
@@ -36,7 +37,7 @@ function chat() {
      * @param id
      */
     function connect(id) {
-        const connectionId = nanoid();
+        const connectionId = generate(nolookalikes, 16);
         console.log('[LOG] Connecting to', id);
         console.log('[LOG] Your connection ID is', connectionId);
         connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
