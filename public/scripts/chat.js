@@ -1,15 +1,19 @@
 const $ = require('jquery');
 const encryption = require('./2_encryption');
-const generate = require('nanoid/generate');
-const noLookalikes = require('nanoid-dictionary/nolookalikes');
+const wordList = require('./3_wordlist');
+const xkcdPassword = require('xkcd-password');
 
+let peerId;
 let connectedPeer;
 let connectedPeers = []; // TODO: Save new peers in array
-const peerId = generate(noLookalikes, 16);
 const host = 'meta.marvinborner.de';
+
+const generator = new xkcdPassword();
+generator.initWithWordList(wordList);
 
 // setup encryption
 (async () => {
+    peerId = await generator.generate().then(words => words.join('-'));
     encryption.setup();
     if (localStorage.getItem('database') === 'success' && await encryption.check()) {
         // TODO: Ask for passphrase
@@ -36,9 +40,10 @@ function chat() {
     /**
      * Connects to a peer via his id
      * @param id
+     * @returns {Promise<void>}
      */
-    function connect(id) {
-        const connectionId = generate(noLookalikes, 16);
+    async function connect(id) {
+        const connectionId = await generator.generate().then(words => words.join('-'));
         console.log('[LOG] Connecting to', id);
         console.log('[LOG] Your connection ID is', connectionId);
         connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
@@ -97,7 +102,7 @@ function chat() {
      * Events after load
      */
     $(document).ready(() => {
-        $('#add_peer_id').on('click', () => connect($('#peer_id').val()));
+        $('#add_peer_id').on('click', async () => await connect($('#peer_id').val()));
         $('#send_message').on('click', async () => await sendMessage($('#message').val()));
 
         $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))
