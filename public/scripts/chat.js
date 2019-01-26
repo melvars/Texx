@@ -1,12 +1,12 @@
 const $ = require('jquery');
 const encryption = require('./2_encryption');
 const generate = require('nanoid/generate');
-const nolookalikes = require('nanoid-dictionary/nolookalikes');
+const noLookalikes = require('nanoid-dictionary/nolookalikes');
 
-let connectedPeers = []; // TODO: Save new peers in array
 let connectedPeer;
-const peerId = generate(nolookalikes, 16);
-const host = '127.0.0.1';
+let connectedPeers = []; // TODO: Save new peers in array
+const peerId = generate(noLookalikes, 16);
+const host = 'meta.marvinborner.de';
 
 // setup encryption
 (async () => {
@@ -38,7 +38,7 @@ function chat() {
      * @param id
      */
     function connect(id) {
-        const connectionId = generate(nolookalikes, 16);
+        const connectionId = generate(noLookalikes, 16);
         console.log('[LOG] Connecting to', id);
         console.log('[LOG] Your connection ID is', connectionId);
         connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
@@ -53,7 +53,7 @@ function chat() {
      * @returns {Promise<void>}
      */
     async function sendMessage(message) {
-        console.log(`[LOG] Sending message ${message} to ${connectedPeer.peer}`);
+        console.log(`[LOG] Sending message '${message}' to ${connectedPeer.peer}`);
         await encryption.get(connectedPeer.peer).then(async peerKey => {
             await encryption.encrypt(message, peerKey).then(async encrypted => {
                 connectedPeer.send({type: 'text', data: encrypted});
@@ -81,7 +81,6 @@ function chat() {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
             if (message.type === 'text') {
-                // TODO: Cleanup async method calls
                 await encryption.get(connectedPeer.peer).then(async peerKey => {
                     await encryption.getPrivate().then(async privateKey => {
                         await encryption.decrypt(message.data, peerKey, privateKey, 'supersecure')

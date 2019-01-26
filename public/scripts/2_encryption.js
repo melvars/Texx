@@ -54,7 +54,8 @@ async function generateKeys(peerId, passphrase) {
  * @returns {Promise<String>}
  */
 async function getPrivateKey() {
-    return await db.own_keys.where('key_type').equals('private_key').limit(1).toArray().then(res => res.length > 0 ? res[0]['key_data'] : '');
+    return await db.own_keys.where('key_type').equals('private_key').limit(1).toArray()
+        .then(res => res.length > 0 ? res[0]['key_data'] : '');
 }
 
 /**
@@ -62,7 +63,8 @@ async function getPrivateKey() {
  * @returns {Promise<String>}
  */
 async function getPublicKey() {
-    return await db.own_keys.where('key_type').equals('public_key').limit(1).toArray().then(res => res.length > 0 ? res[0]['key_data'] : '');
+    return await db.own_keys.where('key_type').equals('public_key').limit(1).toArray()
+        .then(res => res.length > 0 ? res[0]['key_data'] : '');
 }
 
 /**
@@ -70,7 +72,8 @@ async function getPublicKey() {
  * @returns {Promise<String>}
  */
 async function getRevocationCertificate() {
-    return await db.own_keys.where('key_type').equals('public_key').limit(1).toArray().then(res => res.length > 0 ? res[0]['key_data'] : '');
+    return await db.own_keys.where('key_type').equals('public_key').limit(1).toArray()
+        .then(res => res.length > 0 ? res[0]['key_data'] : '');
 }
 
 /**
@@ -81,7 +84,6 @@ async function getRevocationCertificate() {
  * @returns {Promise<String>}
  */
 async function encrypt(data, publicKey) {
-    console.log(publicKey);
     //const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
     //await privateKeyObj.decrypt(passphrase);
 
@@ -91,10 +93,7 @@ async function encrypt(data, publicKey) {
         //privateKeys: [privateKeyObj] // TODO: Use private key for signing
     };
 
-    return await openpgp.encrypt(options).then(ciphertext => {
-        console.log(ciphertext.data);
-        return ciphertext.data;
-    });
+    return await openpgp.encrypt(options).then(ciphertext => ciphertext.data);
 }
 
 /**
@@ -140,22 +139,32 @@ async function isEncrypted() {
  * @param key
  */
 async function storePeerPublicKey(peerId, key) {
-    console.log(peerId);
-    console.log(key);
     await db.peer_keys.put({peer_id: peerId, key_data: key}).then(() =>
         console.log('[LOG] Stored public key of ' + peerId)
     );
 }
 
 /**
- * Gets the public key of a peer
+ * Gets and verifies the public key of a peer
  * @param peerId
  * @returns {Promise<String>}
  */
 async function getPeerPublicKey(peerId) {
-    return await db.peer_keys.where('peer_id').equals(peerId).limit(1).toArray().then(res =>
-        res.length > 0 ? res[0]['key_data'] : ''
-    );
+    return await db.peer_keys.where('peer_id').equals(peerId).limit(1).toArray().then(async res => {
+        let publicKey;
+        if (res.length > 0) {
+            publicKey = res[0]['key_data'];
+            const publicKeyUserId = (await (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser()
+                .then(obj => obj.user.userId.userid));
+            if (publicKeyUserId !== peerId) {
+                publicKey = '';
+                console.error('[LOG] Public key verification failed! The peers real identity is ' + publicKeyUserId)
+            } else
+                console.log('[LOG] Public key verification succeeded!')
+        } else
+            publicKey = '';
+        return publicKey;
+    });
 }
 
 /**
@@ -182,3 +191,5 @@ exports.check = isEncrypted;
 exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
 exports.test = testEncryption;
+
+window.pgp = openpgp;
