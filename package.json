@@ -33,13 +33,13 @@
         "eslint"
     ],
     "dependencies": {
-        "alasql": "^0.4.11",
         "babel-cli": "^6.26.0",
         "babel-plugin-transform-class-properties": "^6.24.1",
         "babel-plugin-transform-object-rest-spread": "^6.26.0",
         "babel-preset-env": "^1.6.1",
         "body-parser": "^1.18.2",
         "bulma": "^0.7.2",
+        "dexie": "^2.0.4",
         "drag-drop": "^4.2.0",
         "ejs": "^2.6.1",
         "express": "^4.16.4",

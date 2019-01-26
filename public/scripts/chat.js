@@ -8,12 +8,12 @@ const peerId = nanoid();
 
 // setup encryption
 (async () => {
-    if (localStorage.getItem('database') === 'success' && encryption.setupConn() && await encryption.check()) {
+    encryption.setup();
+    if (localStorage.getItem('database') === 'success' && await encryption.check()) {
         // TODO: Ask for passphrase
         chat();
     } else {
         console.log('[LOG] No existing keys found! Generating...');
-        encryption.setup();
         (async () => await encryption.generate(peerId, 'supersecure').then(() => chat()))()
     }
 })();
