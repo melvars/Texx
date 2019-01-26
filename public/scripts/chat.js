@@ -6,6 +6,7 @@ const nolookalikes = require('nanoid-dictionary/nolookalikes');
 let connectedPeers = []; // TODO: Save new peers in array
 let connectedPeer;
 const peerId = generate(nolookalikes, 16);
+const host = '127.0.0.1';
 
 // setup encryption
 (async () => {
@@ -20,7 +21,7 @@ const peerId = generate(nolookalikes, 16);
 })();
 
 function chat() {
-    const peer = new Peer(peerId, {host: '127.0.0.1', port: 4242, path: '/', debug: 0});
+    const peer = new Peer(peerId, {host: host, port: 8080, path: '/api', debug: 0});
 
     // Peer events
     peer.on('open', id => console.log('[LOG] Your ID is', id));
