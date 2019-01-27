@@ -21,14 +21,20 @@ generator.initWithWordList(wordList);
     peerId = await generator.generate().then(words => words.join('-'));
     encryption.setup();
     if (localStorage.getItem('database') === 'success' && await encryption.check()) {
-        pinInput.init(async pin => {
+        pinInput.init(async (pin, tryCount) => {
             try {
                 await encryption.decryptPrivate(await encryption.getPrivate(), pin);
                 chat()
             } catch (e) {
-                // TODO: 3 passphrase tries
-                console.error('Passphrase is wrong!');
-                pinInput.failure();
+                if (tryCount === 3) {
+                    encryption.reset();
+                    console.error('Too many tries!');
+                    pinInput.failure('Account was deleted, this site will reload.');
+                    setTimeout(() => location.reload(), 1500)
+                } else {
+                    console.error('Passphrase is wrong!');
+                    pinInput.failure('Passphrase is wrong!');
+                }
             }
         });
     } else {

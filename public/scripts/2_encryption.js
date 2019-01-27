@@ -10,7 +10,6 @@ let db;
  */
 function setupDatabase() {
     db = new Dexie('texx');
-    window.db = db;
     db.version(2).stores({
         own_keys: '&key_type, key_data',
         peer_keys: 'peer_id, key_data',
@@ -179,6 +178,15 @@ async function getPeerPublicKey(peerId) {
 }
 
 /**
+ * Resets the database/encryption
+ */
+function reset() {
+    db.delete();
+    localStorage.removeItem('database');
+    console.log('[LOG] Database has been deleted!')
+}
+
+/**
  * Just a general test case
  */
 function testEncryption() {
@@ -202,4 +210,5 @@ exports.decryptPrivate = decryptPrivateKey;
 exports.check = isEncrypted;
 exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
+exports.reset = reset;
 exports.test = testEncryption;

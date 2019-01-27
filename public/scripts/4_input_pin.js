@@ -6,6 +6,8 @@ let pin = [];
  * @param callback
  */
 function init(callback) {
+    let tryCount = 0;
+
     $('#1').focus().on('input', (el) => {
         pin.push($(el.target).val());
         $(el.target).val('*');
@@ -27,16 +29,16 @@ function init(callback) {
     $('#4').on('input', (el) => {
         pin.push($(el.target).val());
         $(el.target).val('*');
-        console.log(pin);
-        callback(pin.join(''))
+        tryCount++;
+        callback(pin.join(''), tryCount)
     });
 }
 
 /**
  * Displays error message and clears input
  */
-function isWrong() {
-    $('#pin_message').text('Passphrase is wrong!');
+function isWrong(message) {
+    $('#pin_message').text(message);
     for (let i = 1; i < 5; i++) $(`#${i}`).val('');
     $('#1').focus();
     pin = [];
