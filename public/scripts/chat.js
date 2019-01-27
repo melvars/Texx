@@ -32,6 +32,43 @@ generator.initWithWordList(wordList);
 })();
 
 /**
+ * Evaluates whether a key generation is needed and initializes regarding actions
+ * @returns {Promise<void>}
+ */
+async function evaluateKeyGeneration() {
+    if (localStorage.getItem('database') === 'success' && await encryption.check()) {
+        pinInput.init(async (pin, tryCount) => {
+            try {
+                if (await encryption.getId(await encryption.getPublic()) !== peerId) throw "Not verified!";
+                passphrase = pin;
+                await encryption.decryptPrivate(await encryption.getPrivate(), pin);
+                chat()
+            } catch (e) { // decrypting failed
+                if (tryCount === 3) {
+                    encryption.reset();
+                    console.error('Too many tries!');
+                    pinInput.failure('This account got removed, the site will reload.');
+                    setTimeout(() => location.reload(), 1500)
+                } else if (e === 'Not verified!') {
+                    console.error(e);
+                    pinInput.failure(e);
+                } else {
+                    console.error('Passphrase is wrong!');
+                    pinInput.failure('Passphrase is wrong!');
+                }
+            }
+        });
+    } else {
+        pinInput.init(pin => {
+            console.log('[LOG] No existing keys found! Generating...');
+            pinInput.generate();
+            passphrase = pin;
+            (async () => await encryption.generate(peerId, passphrase).then(() => chat()))()
+        });
+    }
+}
+
+/**
  * Initializes chat functions
  */
 function chat() {
@@ -119,45 +156,10 @@ function chat() {
      */
     $(document).ready(() => {
         $('#add_peer_id').on('click', async () => await connect($('#peer_id').val()));
-        $('#send_message').on('click', async () => await sendMessage($('#message').val()));
+        $('#send_message').on('click', async () => await sendMessage($('#message').val()) & $('#message').val(''));
+        $('#logout').on('click', () => location.reload());
+        $('#delete').on('click', () => encryption.reset() & location.reload());
 
         $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))
     });
-}
-
-/**
- * Evaluates whether a key generation is needed and initializes regarding actions
- * @returns {Promise<void>}
- */
-async function evaluateKeyGeneration() {
-    if (localStorage.getItem('database') === 'success' && await encryption.check()) {
-        pinInput.init(async (pin, tryCount) => {
-            try {
-                if (await encryption.getId(await encryption.getPublic()) !== peerId) throw "Not verified!";
-                passphrase = pin;
-                await encryption.decryptPrivate(await encryption.getPrivate(), pin);
-                chat()
-            } catch (e) { // decrypting failed
-                if (tryCount === 3) {
-                    encryption.reset();
-                    console.error('Too many tries!');
-                    pinInput.failure('This account got removed, the site will reload.');
-                    setTimeout(() => location.reload(), 1500)
-                } else if (e === 'Not verified!') {
-                    console.error(e);
-                    pinInput.failure(e);
-                } else {
-                    console.error('Passphrase is wrong!');
-                    pinInput.failure('Passphrase is wrong!');
-                }
-            }
-        });
-    } else {
-        pinInput.init(pin => {
-            console.log('[LOG] No existing keys found! Generating...');
-            pinInput.generate();
-            passphrase = pin;
-            (async () => await encryption.generate(peerId, passphrase).then(() => chat()))()
-        });
-    }
 }

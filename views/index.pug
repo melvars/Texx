@@ -2,10 +2,14 @@ extends layout
 
 block content
     .chat#chat
-        button.button.add-peer-button.is-big.is-outlined.is-info(toggle-contact-modal)
+        button.button.action-button.is-big.is-outlined.is-info(toggle-contact-modal)
             i.fas.fa-plus
+        button.button.action-button.is-big.is-outlined.is-warning#logout
+            i.fas.fa-sign-out-alt
+        button.button.action-button.is-big.is-outlined.is-danger#delete
+            i.fas.fa-trash
 
-        .columns.level.main
+        .columns.main.level
             .section.column.level-right
                 #messages
                 .message-field
