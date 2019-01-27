@@ -1,12 +1,12 @@
 {
-    "name": "decentralized-chat",
+    "name": "texx",
     "version": "1.0.0",
     "description": "Decentralized chatting made easy!",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/vmasto/express-babel.git"
+        "url": "git+https://github.com/texxme/texx.git"
     },
-    "author": "Vassilis Mastorostergios <vmasto@gmail.com>",
+    "author": "Marvin Borner <contact@marvinborner.de>",
     "license": "MIT",
     "main": "dist/index.js",
     "engines": {
