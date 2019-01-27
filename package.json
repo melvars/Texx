@@ -14,10 +14,10 @@
         "npm": ">=3.10.0"
     },
     "scripts": {
-        "dev": "nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\" & npm run watch",
-        "watch": "npm run build && onchange public/styles/* -- npm run css & watchify public/scripts/*.js -o dist/app.js -v",
+        "dev": "npm run watch & nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
+        "watch": "npm run build && onchange public/styles/* -- npm run css & onchange public/scripts/* -- browserify public/scripts/main.js -o dist/app.js",
         "css": "node-sass public/styles/main.sass dist/app.css --output-style compressed",
-        "build": "rm -r dist/* && npm run css && browserify public/scripts/*.js -o dist/app.js && cp public/additional/* dist/"
+        "build": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/app.js"
     },
     "keywords": [
         "express",
@@ -65,8 +65,7 @@
         "jest": "^23.6.0",
         "node-sass": "^4.11.0",
         "nodemon": "^1.18.9",
-        "supertest": "^3.0.0",
-        "watchify": "^3.11.0"
+        "supertest": "^3.0.0"
     },
     "browser": {
         "openpgp": "openpgp/dist/openpgp.min.js"

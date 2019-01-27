@@ -1,6 +1,5 @@
 const Dexie = require('dexie');
 const openpgp = require('openpgp');
-openpgp.initWorker({path: 'openpgp.worker.js'});
 
 let db;
 

@@ -1,8 +1,8 @@
 // general imports
 const $ = require('jquery');
-const encryption = require('./2_encryption');
-const wordList = require('./3_wordlist');
-const pinInput = require('./4_input_pin');
+const encryption = require('./encryption');
+const wordList = require('./wordlist');
+const pinInput = require('./input_pin');
 const xkcdPassword = require('xkcd-password');
 
 // setup vars
