@@ -163,8 +163,7 @@ async function getPeerPublicKey(peerId) {
         let publicKey;
         if (res.length > 0) {
             publicKey = res[0]['key_data'];
-            const publicKeyUserId = (await (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser()
-                .then(obj => obj.user.userId.userid));
+            const publicKeyUserId = await getPublicKeyUserId(publicKey);
             if (publicKeyUserId !== peerId) {
                 publicKey = '';
                 console.error('[LOG] Public key verification failed! The peers real identity is ' + publicKeyUserId)
@@ -177,26 +176,22 @@ async function getPeerPublicKey(peerId) {
 }
 
 /**
+ * Returns user id of a public key
+ * @param publicKey
+ * @returns {Promise<String>}
+ */
+async function getPublicKeyUserId(publicKey) {
+    return await (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser().then(obj => obj.user.userId.userid) || '';
+}
+
+/**
  * Resets the database/encryption
  */
 function reset() {
     db.delete();
     localStorage.removeItem('database');
+    localStorage.removeItem('peer_id');
     console.log('[LOG] Database has been deleted!')
-}
-
-/**
- * Just a general test case
- */
-function testEncryption() {
-    generateKeys('test_id', 'supersecure').then(() => {
-        encrypt('The meaning of life', getPublicKey()).then(encrypted => {
-            decrypt(encrypted, getPublicKey(), getPrivateKey(), 'supersecure').then(decrypted => {
-                if (decrypted === 'The meaning of life')
-                    console.log("YEEHA, Test succeeded!")
-            })
-        })
-    })
 }
 
 exports.setup = setupDatabase;
@@ -209,5 +204,5 @@ exports.decryptPrivate = decryptPrivateKey;
 exports.check = isEncrypted;
 exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
+exports.getId = getPublicKeyUserId;
 exports.reset = reset;
-exports.test = testEncryption;

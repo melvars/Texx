@@ -16,35 +16,19 @@ let connectedPeers = []; // TODO: Save new peers in array
 const generator = new xkcdPassword();
 generator.initWithWordList(wordList);
 
-// setup encryption
+/**
+ * Sets up encryption, user etc.
+ */
 (async () => {
-    peerId = await generator.generate().then(words => words.join('-'));
+    // generate peerId
+    if (localStorage.getItem('peer_id') === null) {
+        peerId = await generator.generate().then(words => words.join('-'));
+        localStorage.setItem('peer_id', peerId);
+    } else
+        peerId = localStorage.getItem('peer_id');
+
     encryption.setup();
-    if (localStorage.getItem('database') === 'success' && await encryption.check()) {
-        pinInput.init(async (pin, tryCount) => {
-            try {
-                await encryption.decryptPrivate(await encryption.getPrivate(), pin);
-                chat()
-            } catch (e) {
-                if (tryCount === 3) {
-                    encryption.reset();
-                    console.error('Too many tries!');
-                    pinInput.failure('Account was deleted, this site will reload.');
-                    setTimeout(() => location.reload(), 1500)
-                } else {
-                    console.error('Passphrase is wrong!');
-                    pinInput.failure('Passphrase is wrong!');
-                }
-            }
-        });
-    } else {
-        pinInput.init(pin => {
-            console.log('[LOG] No existing keys found! Generating...');
-            pinInput.generate();
-            passphrase = pin;
-            (async () => await encryption.generate(peerId, passphrase).then(() => chat()))()
-        });
-    }
+    await evaluateKeyGeneration();
 })();
 
 /**
@@ -141,4 +125,38 @@ function chat() {
     });
 }
 
-//encryption.test(); // TESTING IF ENCRYPTION WORKS
+/**
+ * Evaluates whether a key generation is needed and initializes regarding actions
+ * @returns {Promise<void>}
+ */
+async function evaluateKeyGeneration() {
+    if (localStorage.getItem('database') === 'success' && await encryption.check()) {
+        pinInput.init(async (pin, tryCount) => {
+            try {
+                if (await encryption.getId(await encryption.getPublic()) !== peerId) throw "Not verified!";
+                await encryption.decryptPrivate(await encryption.getPrivate(), pin);
+                chat()
+            } catch (e) { // decrypting failed
+                if (tryCount === 3) {
+                    encryption.reset();
+                    console.error('Too many tries!');
+                    pinInput.failure('This account got removed, the site will reload.');
+                    setTimeout(() => location.reload(), 1500)
+                } else if (e === 'Not verified!') {
+                    console.error(e);
+                    pinInput.failure(e);
+                } else {
+                    console.error('Passphrase is wrong!');
+                    pinInput.failure('Passphrase is wrong!');
+                }
+            }
+        });
+    } else {
+        pinInput.init(pin => {
+            console.log('[LOG] No existing keys found! Generating...');
+            pinInput.generate();
+            passphrase = pin;
+            (async () => await encryption.generate(peerId, passphrase).then(() => chat()))()
+        });
+    }
+}
