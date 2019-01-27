@@ -17,7 +17,7 @@
         "dev": "npm run watch & nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
         "watch": "npm run build && onchange public/styles/* -- npm run css & onchange public/scripts/* -- browserify public/scripts/main.js -o dist/app.js",
         "css": "node-sass public/styles/main.sass dist/app.css --output-style compressed",
-        "build": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/app.js"
+        "build": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/temp.js && minify dist/temp.js > dist/app.js && rm dist/temp.js && pug views/index.pug --out dist"
     },
     "keywords": [
         "express",
@@ -43,11 +43,13 @@
         "ejs": "^2.6.1",
         "express": "^4.16.4",
         "jquery": "^3.3.1",
+        "minify": "^4.1.0",
         "morgan": "^1.9.0",
         "onchange": "^5.2.0",
         "openpgp": "^4.4.5",
         "peer": "^0.2.10",
         "pug": "^2.0.0-beta11",
+        "pug-cli": "^1.0.0-alpha6",
         "rimraf": "^2.6.2",
         "xkcd-password": "^2.0.0"
     },
