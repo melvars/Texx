@@ -3,10 +3,10 @@ const encryption = require('./2_encryption');
 const wordList = require('./3_wordlist');
 const xkcdPassword = require('xkcd-password');
 
+const host = '127.0.0.1';
 let peerId;
 let connectedPeer;
 let connectedPeers = []; // TODO: Save new peers in array
-const host = 'meta.marvinborner.de';
 
 const generator = new xkcdPassword();
 generator.initWithWordList(wordList);
