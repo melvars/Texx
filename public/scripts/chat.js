@@ -134,6 +134,7 @@ async function evaluateKeyGeneration() {
         pinInput.init(async (pin, tryCount) => {
             try {
                 if (await encryption.getId(await encryption.getPublic()) !== peerId) throw "Not verified!";
+                passphrase = pin;
                 await encryption.decryptPrivate(await encryption.getPrivate(), pin);
                 chat()
             } catch (e) { // decrypting failed
