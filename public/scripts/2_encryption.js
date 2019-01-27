@@ -105,8 +105,7 @@ async function encrypt(data, publicKey) {
  * @returns {Promise<String>}
  */
 async function decrypt(data, publicKey, privateKey, passphrase) {
-    const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
-    await privateKeyObj.decrypt(passphrase);
+    const privateKeyObj = await decryptPrivateKey(privateKey, passphrase);
 
     const options = {
         message: await openpgp.message.readArmored(data),
@@ -114,7 +113,19 @@ async function decrypt(data, publicKey, privateKey, passphrase) {
         privateKeys: [privateKeyObj]
     };
 
-    return await openpgp.decrypt(options).then(plaintext => plaintext.data)
+    return await openpgp.decrypt(options).then(plaintext => plaintext.data);
+}
+
+/**
+ * Decrypts the private key
+ * @param privateKey
+ * @param passphrase
+ * @returns {Promise<module:key.Key>}
+ */
+async function decryptPrivateKey(privateKey, passphrase) {
+    const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
+    await privateKeyObj.decrypt(passphrase);
+    return privateKeyObj;
 }
 
 /**
@@ -187,9 +198,8 @@ exports.getPrivate = getPrivateKey;
 exports.getPublic = getPublicKey;
 exports.encrypt = encrypt;
 exports.decrypt = decrypt;
+exports.decryptPrivate = decryptPrivateKey;
 exports.check = isEncrypted;
 exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
 exports.test = testEncryption;
-
-window.pgp = openpgp;

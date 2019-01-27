@@ -1,13 +1,18 @@
+// general imports
 const $ = require('jquery');
 const encryption = require('./2_encryption');
 const wordList = require('./3_wordlist');
+const pinInput = require('./4_input_pin');
 const xkcdPassword = require('xkcd-password');
 
+// setup vars
 const host = '127.0.0.1';
 let peerId;
+let passphrase;
 let connectedPeer;
 let connectedPeers = []; // TODO: Save new peers in array
 
+// setup generator
 const generator = new xkcdPassword();
 generator.initWithWordList(wordList);
 
@@ -16,15 +21,35 @@ generator.initWithWordList(wordList);
     peerId = await generator.generate().then(words => words.join('-'));
     encryption.setup();
     if (localStorage.getItem('database') === 'success' && await encryption.check()) {
-        // TODO: Ask for passphrase
-        chat();
+        pinInput.init(async pin => {
+            try {
+                await encryption.decryptPrivate(await encryption.getPrivate(), pin);
+                chat()
+            } catch (e) {
+                // TODO: 3 passphrase tries
+                console.error('Passphrase is wrong!');
+                pinInput.failure();
+            }
+        });
     } else {
-        console.log('[LOG] No existing keys found! Generating...');
-        (async () => await encryption.generate(peerId, 'supersecure').then(() => chat()))()
+        pinInput.init(pin => {
+            console.log('[LOG] No existing keys found! Generating...');
+            pinInput.generate();
+            passphrase = pin;
+            (async () => await encryption.generate(peerId, passphrase).then(() => chat()))()
+        });
     }
 })();
 
+/**
+ * Initializes chat functions
+ */
 function chat() {
+    // hide pin input and display chat
+    $('#enter_pin').hide();
+    $('#chat').fadeIn();
+
+    // start the peer
     const peer = new Peer(peerId, {host: host, port: 8080, path: '/api', debug: 0});
 
     // Peer events
@@ -33,8 +58,11 @@ function chat() {
     peer.on('connection', conn => {
         connectedPeer = conn;
         console.log('[LOG] Connected with', connectedPeer.peer);
-        connectedPeer.on('open', async () => await encryption.getPublic().then(res => transferKey(res)));
-        connectedPeer.on('data', async message => await receivedMessage(message));
+        connectedPeer.on('open', async () => transferKey(await encryption.getPublic()));
+        connectedPeer.on('data', async message => {
+            console.log('[LOG] Received new message!');
+            await receivedMessage(message);
+        })
     });
 
     /**
@@ -43,13 +71,16 @@ function chat() {
      * @returns {Promise<void>}
      */
     async function connect(id) {
-        const connectionId = await generator.generate().then(words => words.join('-'));
+        const connectionId = (await generator.generate()).join('-');
         console.log('[LOG] Connecting to', id);
         console.log('[LOG] Your connection ID is', connectionId);
         connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
         console.log('[LOG] Connected with', connectedPeer.peer);
-        connectedPeer.on('open', async () => await encryption.getPublic().then(res => transferKey(res)));
-        connectedPeer.on('data', async message => await receivedMessage(message))
+        connectedPeer.on('open', async () => transferKey(await encryption.getPublic()));
+        connectedPeer.on('data', async message => {
+            console.log('[LOG] Received new message!');
+            await receivedMessage(message);
+        })
     }
 
     /**
@@ -59,12 +90,11 @@ function chat() {
      */
     async function sendMessage(message) {
         console.log(`[LOG] Sending message '${message}' to ${connectedPeer.peer}`);
-        await encryption.get(connectedPeer.peer).then(async peerKey => {
-            await encryption.encrypt(message, peerKey).then(async encrypted => {
-                connectedPeer.send({type: 'text', data: encrypted});
-                await receivedMessage(message, true);
-            })
-        })
+        connectedPeer.send({
+            type: 'text',
+            data: await encryption.encrypt(message, await encryption.get(connectedPeer.peer))
+        });
+        await receivedMessage(message, true);
     }
 
     /**
@@ -86,12 +116,8 @@ function chat() {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
             if (message.type === 'text') {
-                await encryption.get(connectedPeer.peer).then(async peerKey => {
-                    await encryption.getPrivate().then(async privateKey => {
-                        await encryption.decrypt(message.data, peerKey, privateKey, 'supersecure')
-                            .then(plaintext => $('#messages').append(`${plaintext}<br>`));
-                    })
-                })
+                await encryption.decrypt(message.data, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase)
+                    .then(plaintext => $('#messages').append(`${plaintext}<br>`));
             } else if (message.type === 'key') {
                 await encryption.store(connectedPeer.peer, message.data)
             }

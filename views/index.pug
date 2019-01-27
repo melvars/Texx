@@ -1,16 +1,17 @@
 extends layout
 
 block content
-    button.button.add-peer-button.is-big.is-outlined.is-info(toggle-contact-modal)
-        i.fas.fa-plus
+    .chat#chat
+        button.button.add-peer-button.is-big.is-outlined.is-info(toggle-contact-modal)
+            i.fas.fa-plus
 
-    .columns.level.main
-        .section.column.level-right
-            #messages
-            .message-field
-                input#message.message-input.input(placeholder='Enter a message')
-                button#send_message.message-button.button.is-success(type=submit)
-                    i.fas.fa-paper-plane
+        .columns.level.main
+            .section.column.level-right
+                #messages
+                .message-field
+                    input#message.message-input.input(placeholder='Enter a message')
+                    button#send_message.message-button.button.is-success(type=submit)
+                        i.fas.fa-paper-plane
 
     .modal#add_contact_modal
         .modal-background
@@ -23,3 +24,17 @@ block content
             footer.modal-card-foot
                 button#add_peer_id.button.is-success(toggle-contact-modal) Add
                 button.button(aria-label='close', toggle-contact-modal) Cancel
+
+    .enter-pin#enter_pin
+        .title.has-text-centered Enter a passphrase
+        .subtitle.has-text-centered.is-danger#pin_message
+        .columns.is-centered.is-flex.pin-wrapper
+            .column.is-centered.is-flex
+                input#1(type='text', maxlength=1, min=0, max=9)
+            .column.is-centered.is-flex
+                input#2(type='text', maxlength=1, min=0, max=9)
+            .column.is-centered.is-flex
+                input#3(type='text', maxlength=1, min=0, max=9)
+            .column.is-centered.is-flex
+                input#4(type='text', maxlength=1, min=0, max=9)
+
