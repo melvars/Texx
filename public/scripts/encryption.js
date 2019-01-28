@@ -1,3 +1,10 @@
+/*
+ * encryption.js
+ * Copyright (c) 2019, Texx
+ * License: MIT
+ *     See https://github.com/texxme/Texx/blob/master/LICENSE
+ */
+
 const Dexie = require('dexie');
 const openpgp = require('openpgp');
 

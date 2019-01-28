@@ -1,3 +1,10 @@
+/*
+ * chat.js
+ * Copyright (c) 2019, Texx
+ * License: MIT
+ *     See https://github.com/texxme/Texx/blob/master/LICENSE
+ */
+
 // general imports
 const $ = require('jquery');
 const crypto = require('crypto');
