@@ -9,6 +9,9 @@ const Dexie = require('dexie');
 const moment = require('moment');
 const openpgp = require('openpgp');
 
+// compress encryption data
+openpgp.config.compression = openpgp.enums.compression.zlib;
+
 let db;
 
 /**
@@ -42,14 +45,13 @@ function setupDatabase() {
 async function generateKeys(peerId, passphrase) {
     const options = {
         userIds: [{name: peerId}],
-        numBits: 4096,
+        curve: 'ed25519',
         passphrase: passphrase
     };
 
     await openpgp.generateKey(options).then(async (key) => {
         await db.own_keys.put({key_type: 'private_key', key_data: key.privateKeyArmored});
-        await db.own_keys.put({key_type: 'public_key', key_data: key.publicKeyArmored});
-        await db.own_keys.put({key_type: 'revocation_certificate', key_data: key.revocationCertificate}).then(() =>
+        await db.own_keys.put({key_type: 'public_key', key_data: key.publicKeyArmored}).then(() =>
             console.log('[LOG] Successfully generated and stored keys!')
         );
     });
@@ -69,15 +71,6 @@ async function getPrivateKey() {
  * @returns {Promise<String>}
  */
 async function getPublicKey() {
-    return await db.own_keys.where('key_type').equals('public_key').limit(1).toArray()
-        .then(res => res.length > 0 ? res[0]['key_data'] : '');
-}
-
-/**
- * Gets the peers revocation certificate
- * @returns {Promise<String>}
- */
-async function getRevocationCertificate() {
     return await db.own_keys.where('key_type').equals('public_key').limit(1).toArray()
         .then(res => res.length > 0 ? res[0]['key_data'] : '');
 }
@@ -143,8 +136,7 @@ async function isEncrypted() {
         if (exists) {
             const hasPrivateKey = await getPrivateKey().then(res => res !== '');
             const hasPublicKey = await getPublicKey().then(res => res !== '');
-            const hasRevocationCertificate = await getRevocationCertificate().then(res => res !== '');
-            return (hasPrivateKey && hasPublicKey && hasRevocationCertificate);
+            return (hasPrivateKey && hasPublicKey);
         } else
             return false;
     });
