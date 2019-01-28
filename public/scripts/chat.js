@@ -15,9 +15,7 @@ const xkcdPassword = require('xkcd-password');
 
 // setup vars
 const host = '127.0.0.1';
-let peerId;
-let passphrase;
-let connectedPeer;
+let peerId, call, passphrase, connectedPeer;
 let connectedPeers = []; // TODO: Save new peers in array
 
 // setup generator
@@ -90,6 +88,7 @@ function chat() {
     // Peer events
     peer.on('open', id => console.log('[LOG] Your ID is', id));
     peer.on('error', err => console.error(err));
+    peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept
     peer.on('connection', async conn => {
         connectedPeer = conn;
         console.log('[LOG] Connected with', connectedPeer.peer);
@@ -165,14 +164,39 @@ function chat() {
     }
 
     /**
-     * Events after load
+     * Click events
      */
     $(document).ready(() => {
-        $('#add_peer_id').on('click', async () => await connect($('#peer_id').val()));
         $('#send_message').on('click', async () => await sendMessage($('#message').val()) & $('#message').val(''));
+
+        // FABs
+        $('#add_peer_id').on('click', async () => await connect($('#peer_id').val()));
         $('#logout').on('click', () => location.reload());
         $('#delete').on('click', () => encryption.reset() & location.reload());
+        $('#call').on('click', () => getMediaStream(stream => {
+            call = peer.call(peerId, stream); // TODO: Encrypt call
+            initCall(call)
+        }));
 
         $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))
     });
+}
+
+function getMediaStream(callback) {
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    navigator.getUserMedia(
+        {audio: true, video: {width: 1280, height: 720}},
+        stream => callback(stream),
+        err => console.error(err)
+    )
+}
+
+function initCall(call) {
+    call.on('stream', stream => {
+        const video = document.querySelector('video');
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+        };
+    })
 }

@@ -10,12 +10,15 @@ block content
     .chat#chat
         button.button.action-button.is-big.is-outlined.is-info(toggle-contact-modal)
             i.fas.fa-plus
+        button.button.action-button.is-big.is-outlined.is-success#call
+            i.fas.fa-phone
         button.button.action-button.is-big.is-outlined.is-warning#logout
             i.fas.fa-sign-out-alt
         button.button.action-button.is-big.is-outlined.is-danger#delete
             i.fas.fa-trash
 
         .columns.main.level
+            video#video
             .section.column.level-right
                 #messages
                 .message-field
