@@ -131,7 +131,7 @@ function chat() {
         console.log(`[LOG] Sending message '${message}' to ${connectedPeer.peer}`);
         connectedPeer.send({
             type: 'text',
-            data: await encryption.encrypt(message, await encryption.get(connectedPeer.peer))
+            data: await encryption.encrypt(message, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase)
         });
         await receivedMessage(message, true);
     }

@@ -80,16 +80,17 @@ async function getPublicKey() {
  * Encrypts the data with a public key (e.g the one of the peer with which you're chatting)
  * @param data
  * @param publicKey
+ * @param privateKey
+ * @param passphrase
  * @returns {Promise<String>}
  */
-async function encrypt(data, publicKey) {
-    //const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
-    //await privateKeyObj.decrypt(passphrase);
+async function encrypt(data, publicKey, privateKey, passphrase) {
+    const privateKeyObj = await decryptPrivateKey(privateKey, passphrase);
 
     const options = {
         message: openpgp.message.fromText(data),
         publicKeys: (await openpgp.key.readArmored(publicKey)).keys,
-        //privateKeys: [privateKeyObj] // TODO: Use private key for signing
+        privateKeys: [privateKeyObj] // for signing
     };
 
     return await openpgp.encrypt(options).then(ciphertext => ciphertext.data);
@@ -154,7 +155,7 @@ async function storeMessage(peerId, message) {
 }
 
 /**
- * Gets a message
+ * Gets a message // TODO: Fix getting messages
  * @param peerId
  * @param publicKey
  * @param privateKey
