@@ -183,7 +183,6 @@ function chat() {
 }
 
 function getMediaStream(callback) {
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
     navigator.getUserMedia(
         {audio: true, video: {width: 1280, height: 720}},
         stream => callback(stream),
