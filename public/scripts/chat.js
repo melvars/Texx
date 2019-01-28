@@ -1,5 +1,6 @@
 // general imports
 const $ = require('jquery');
+const crypto = require('crypto');
 const encryption = require('./encryption');
 const wordList = require('./wordlist');
 const pinInput = require('./input_pin');
@@ -40,8 +41,8 @@ async function evaluateKeyGeneration() {
         pinInput.init(async (pin, tryCount) => {
             try {
                 if (await encryption.getId(await encryption.getPublic()) !== peerId) throw "Not verified!";
-                passphrase = pin;
-                await encryption.decryptPrivate(await encryption.getPrivate(), pin);
+                passphrase = new Buffer(crypto.createHmac('SHA256', pin).update(pin).digest('hex')).toString('base64');
+                await encryption.decryptPrivate(await encryption.getPrivate(), passphrase);
                 chat()
             } catch (e) { // decrypting failed
                 if (tryCount === 3) {
@@ -62,7 +63,7 @@ async function evaluateKeyGeneration() {
         pinInput.init(pin => {
             console.log('[LOG] No existing keys found! Generating...');
             pinInput.generate();
-            passphrase = pin;
+            passphrase = new Buffer(crypto.createHmac('SHA256', pin).update(pin).digest('hex')).toString('base64');
             (async () => await encryption.generate(peerId, passphrase).then(() => chat()))()
         });
     }
