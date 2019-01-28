@@ -6,6 +6,7 @@
  */
 
 const Dexie = require('dexie');
+const moment = require('moment');
 const openpgp = require('openpgp');
 
 let db;
@@ -19,7 +20,7 @@ function setupDatabase() {
     db.version(2).stores({
         own_keys: '&key_type, key_data',
         peer_keys: 'peer_id, key_data',
-        messages: 'peer_id, message'
+        messages: '++id, peer_id, message, time'
     });
 
     localStorage.setItem('database', 'success');
@@ -150,6 +151,41 @@ async function isEncrypted() {
 }
 
 /**
+ * Stores a message
+ * @param peerId
+ * @param message
+ */
+async function storeMessage(peerId, message) {
+    await db.messages.put({peer_id: peerId, message: message, time: new Date()}).then(() =>
+        console.log('[LOG] Stored message of ' + peerId)
+    );
+}
+
+/**
+ * Gets a message
+ * @param peerId
+ * @param publicKey
+ * @param privateKey
+ * @param passphrase
+ */
+async function getMessages(peerId, publicKey, privateKey, passphrase) {
+    console.log('[LOG] Getting messages');
+    try {
+        return await db.messages.where('peer_id').equals(peerId).sortBy('id').toArray().then(messages => {
+            let messageArray = [];
+            messages.forEach(async messageObj => messageArray.push({
+                message: await decrypt(messages['message'], publicKey, privateKey, passphrase),
+                time: moment(messageObj['time']).fromNow()
+            }));
+            return messageArray;
+        })
+    } catch (e) {
+        console.log('[LOG] No messages found!');
+        return [];
+    }
+}
+
+/**
  * Stores the public key of a peer
  * @param peerId
  * @param key
@@ -209,6 +245,8 @@ exports.encrypt = encrypt;
 exports.decrypt = decrypt;
 exports.decryptPrivate = decryptPrivateKey;
 exports.check = isEncrypted;
+exports.storeMsg = storeMessage;
+exports.getMsgs = getMessages;
 exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
 exports.getId = getPublicKeyUserId;

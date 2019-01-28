@@ -44,6 +44,7 @@
         "express": "^4.16.4",
         "jquery": "^3.3.1",
         "minify": "^4.1.0",
+        "moment": "^2.24.0",
         "morgan": "^1.9.0",
         "onchange": "^5.2.0",
         "openpgp": "^4.4.5",
