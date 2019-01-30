@@ -7,6 +7,7 @@
 
 const Dexie = require('dexie');
 const moment = require('moment');
+const crypto = require('crypto');
 const openpgp = require('openpgp');
 
 // compress encryption data
@@ -147,12 +148,39 @@ async function isEncrypted() {
 }
 
 /**
- * Stores a message
+ * Encrypts a message
+ * @param message
+ * @param passphrase
+ * @returns {string}
+ */
+function encryptMessage(message, passphrase) {
+    const cipher = crypto.createCipher('aes-256-ctr', passphrase);
+    const plaintext = cipher.update(message, 'utf8', 'hex');
+    console.log('[LOG] Encrypted message successfully!');
+    return plaintext + cipher.final('hex');
+}
+
+/**
+ * Decrypts a message
+ * @param message
+ * @param passphrase
+ * @returns {string}
+ */
+function decryptMessage(message, passphrase) {
+    const cipher = crypto.createCipher('aes-256-ctr', passphrase);
+    const plaintext = cipher.update(message, 'hex', 'utf8');
+    console.log('[LOG] Decrypted message successfully!');
+    return plaintext + cipher.final('utf8');
+}
+
+/**
+ * Stores a message // TODO: Store and get own messages too
  * @param peerId
  * @param message
+ * @param passphrase
  */
-async function storeMessage(peerId, message) {
-    db.messages.put({peer_id: peerId, message: message, time: new Date()}).then(() =>
+async function storeMessage(peerId, message, passphrase) {
+    db.messages.put({peer_id: peerId, message: encryptMessage(message, passphrase), time: new Date()}).then(() =>
         console.log('[LOG] Stored message of ' + peerId)
     );
 }
@@ -166,13 +194,13 @@ async function storeMessage(peerId, message) {
  * @returns {Promise<Array>}
  */
 async function getMessages(peerId, publicKey, privateKey, passphrase) {
-    console.log('[LOG] Getting messages');
+    console.log('[LOG] Getting messages...');
     try {
         const messages = await db.messages.where('peer_id').equals(peerId).sortBy('id');
         let messageArray = [];
         for (let i = messages.length; i--;) {
             await messageArray.push({
-                message: await decrypt(messages[i]['message'], publicKey, privateKey, passphrase),
+                message: await decrypt(decryptMessage(messages[i]['message'], passphrase), publicKey, privateKey, passphrase),
                 time: moment(messages[i]['time']).fromNow()
             })
         }
@@ -249,5 +277,3 @@ exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
 exports.getId = getPublicKeyUserId;
 exports.reset = reset;
-
-window.getMsgs = getMessages;

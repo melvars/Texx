@@ -156,7 +156,7 @@ function chat() {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
             if (message.type === 'text') {
-                await encryption.storeMsg(connectedPeer.peer, message.data);
+                await encryption.storeMsg(connectedPeer.peer, message.data, passphrase);
                 await encryption.decrypt(message.data, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase)
                     .then(plaintext => $('#messages').append(`${plaintext}<br>`));
             } else if (message.type === 'key') {
