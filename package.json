@@ -15,9 +15,10 @@
     },
     "scripts": {
         "dev": "npm run watch & nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
-        "watch": "npm run build && onchange public/styles/* -- npm run css & onchange public/scripts/* -- browserify public/scripts/main.js -o dist/app.js",
+        "watch": "npm run debug && onchange public/styles/* -- npm run css & onchange public/scripts/* -- browserify public/scripts/main.js -o dist/app.js",
         "css": "node-sass public/styles/main.sass dist/app.css --output-style compressed",
-        "build": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/app.js"
+        "debug": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/app.js",
+        "build": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/temp.js && minify dist/temp.js > dist/app.js && rm dist/temp.js && pug views/index.pug --out dist"
     },
     "keywords": [
         "express",
