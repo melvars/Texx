@@ -51,29 +51,30 @@ async function generateKeys(peerId, passphrase) {
         passphrase: passphrase
     };
 
-    await openpgp.generateKey(options).then(async (key) => {
+    openpgp.generateKey(options).then(async (key) => {
         await db.own_keys.put({key_type: 'private_key', key_data: key.privateKeyArmored});
-        await db.own_keys.put({key_type: 'public_key', key_data: key.publicKeyArmored}).then(() =>
+        db.own_keys.put({key_type: 'public_key', key_data: key.publicKeyArmored}).then(() =>
             console.log('[LOG] Successfully generated and stored keys!')
         );
     });
 }
 
 /**
+ * /**
  * Gets the peers private key
- * @returns {Promise<String>}
+ * @returns {Dexie.Promise<Dexie.Promise<string>>}
  */
 async function getPrivateKey() {
-    return await db.own_keys.where('key_type').equals('private_key').limit(1).toArray()
+    return db.own_keys.where('key_type').equals('private_key').limit(1).toArray()
         .then(res => res.length > 0 ? res[0]['key_data'] : '');
 }
 
 /**
  * Gets the peers public key
- * @returns {Promise<String>}
+ * @returns {Dexie.Promise<Dexie.Promise<string>>}
  */
 async function getPublicKey() {
-    return await db.own_keys.where('key_type').equals('public_key').limit(1).toArray()
+    return db.own_keys.where('key_type').equals('public_key').limit(1).toArray()
         .then(res => res.length > 0 ? res[0]['key_data'] : '');
 }
 
@@ -95,7 +96,7 @@ async function encrypt(data, publicKey, privateKey, passphrase) {
         privateKeys: [privateKeyObj] // for signing
     };
 
-    return await openpgp.encrypt(options).then(ciphertext => ciphertext.data);
+    return openpgp.encrypt(options).then(ciphertext => ciphertext.data);
 }
 
 /**
@@ -115,7 +116,7 @@ async function decrypt(data, publicKey, privateKey, passphrase) {
         privateKeys: [privateKeyObj]
     };
 
-    return await openpgp.decrypt(options).then(plaintext => plaintext.data);
+    return openpgp.decrypt(options).then(plaintext => plaintext.data);
 }
 
 /**
@@ -135,10 +136,10 @@ async function decryptPrivateKey(privateKey, passphrase) {
  * @returns {boolean}
  */
 async function isEncrypted() {
-    return await Dexie.exists('texx').then(async (exists) => {
+    return Dexie.exists('texx').then(async (exists) => {
         if (exists) {
-            const hasPrivateKey = await getPrivateKey().then(res => res !== '');
-            const hasPublicKey = await getPublicKey().then(res => res !== '');
+            const hasPrivateKey = getPrivateKey().then(res => res !== '');
+            const hasPublicKey = getPublicKey().then(res => res !== '');
             return (hasPrivateKey && hasPublicKey);
         } else
             return false;
@@ -151,31 +152,31 @@ async function isEncrypted() {
  * @param message
  */
 async function storeMessage(peerId, message) {
-    await db.messages.put({peer_id: peerId, message: message, time: new Date()}).then(() =>
+    db.messages.put({peer_id: peerId, message: message, time: new Date()}).then(() =>
         console.log('[LOG] Stored message of ' + peerId)
     );
 }
 
 /**
- * Gets a message // TODO: Fix getting messages
+ * Gets the messages
  * @param peerId
  * @param publicKey
  * @param privateKey
  * @param passphrase
+ * @returns {Promise<Array>}
  */
 async function getMessages(peerId, publicKey, privateKey, passphrase) {
     console.log('[LOG] Getting messages');
     try {
-        return await db.messages.where('peer_id').equals(peerId).sortBy('id').then(messages => {
-            console.log(messages);
-            let messageArray = [];
-            messages.forEach(async messageObj => console.log(messageObj) & messageArray.push({
-                message: await decrypt(messageObj['message'], publicKey, privateKey, passphrase),
-                time: moment(messageObj['time']).fromNow()
-            }));
-            console.log(messageArray);
-            return messageArray;
-        })
+        const messages = await db.messages.where('peer_id').equals(peerId).sortBy('id');
+        let messageArray = [];
+        for (let i = messages.length; i--;) {
+            await messageArray.push({
+                message: await decrypt(messages[i]['message'], publicKey, privateKey, passphrase),
+                time: moment(messages[i]['time']).fromNow()
+            })
+        }
+        return messageArray;
     } catch (e) {
         console.log('[LOG] No messages found!');
         return [];
@@ -188,7 +189,7 @@ async function getMessages(peerId, publicKey, privateKey, passphrase) {
  * @param key
  */
 async function storePeerPublicKey(peerId, key) {
-    await db.peer_keys.put({peer_id: peerId, key_data: key}).then(() =>
+    db.peer_keys.put({peer_id: peerId, key_data: key}).then(() =>
         console.log('[LOG] Stored public key of ' + peerId)
     );
 }
@@ -196,10 +197,10 @@ async function storePeerPublicKey(peerId, key) {
 /**
  * Gets and verifies the public key of a peer
  * @param peerId
- * @returns {Promise<String>}
+ * @returns {Dexie.Promise<Dexie.Promise<string>>}
  */
 async function getPeerPublicKey(peerId) {
-    return await db.peer_keys.where('peer_id').equals(peerId).limit(1).toArray().then(async res => {
+    return db.peer_keys.where('peer_id').equals(peerId).limit(1).toArray().then(async res => {
         let publicKey;
         if (res.length > 0) {
             publicKey = res[0]['key_data'];
@@ -221,7 +222,7 @@ async function getPeerPublicKey(peerId) {
  * @returns {Promise<String>}
  */
 async function getPublicKeyUserId(publicKey) {
-    return await (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser().then(obj => obj.user.userId.userid) || '';
+    return (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser().then(obj => obj.user.userId.userid) || '';
 }
 
 /**
@@ -248,3 +249,5 @@ exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
 exports.getId = getPublicKeyUserId;
 exports.reset = reset;
+
+window.getMsgs = getMessages;

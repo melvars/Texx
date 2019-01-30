@@ -93,7 +93,8 @@ function chat() {
         connectedPeer = conn;
         console.log('[LOG] Connected with', connectedPeer.peer);
         encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase).then(messages =>
-            messages.forEach(data => receivedMessage(`${data.message} - ${data.time}`, true)));
+            messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true))
+        );
         connectedPeer.on('open', async () => transferKey(await encryption.getPublic()));
         connectedPeer.on('data', async message => {
             console.log('[LOG] Received new message!');
@@ -113,7 +114,8 @@ function chat() {
         connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
         console.log('[LOG] Connected with', connectedPeer.peer);
         encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase).then(messages =>
-            messages.forEach(data => receivedMessage(`${data.message} - ${data.time}`, true)));
+            messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true))
+        );
         connectedPeer.on('open', async () => transferKey(await encryption.getPublic()));
         connectedPeer.on('data', async message => {
             console.log('[LOG] Received new message!');
@@ -154,7 +156,7 @@ function chat() {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
             if (message.type === 'text') {
-                await encryption.storeMsg(peerId, message.data);
+                await encryption.storeMsg(connectedPeer.peer, message.data);
                 await encryption.decrypt(message.data, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase)
                     .then(plaintext => $('#messages').append(`${plaintext}<br>`));
             } else if (message.type === 'key') {
