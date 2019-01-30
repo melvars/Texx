@@ -164,10 +164,21 @@ function chat() {
     }
 
     /**
+     * Sends a message of the text input field
+     * @returns {Promise<void>}
+     */
+    async function sendMessageFromInput() {
+        return await sendMessage($('#message').val()) & $('#message').val('')
+    }
+
+    /**
      * Click events
      */
     $(document).ready(() => {
-        $('#send_message').on('click', async () => await sendMessage($('#message').val()) & $('#message').val(''));
+        $('#send_message').on('click', async () => await sendMessageFromInput());
+        $('#message').on('keydown', async e => {
+            if (e.key === 'Enter') await sendMessageFromInput()
+        });
 
         // FABs
         $('#add_peer_id').on('click', async () => await connect($('#peer_id').val()));

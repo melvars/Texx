@@ -33,6 +33,8 @@ function setupDatabase() {
         console.error("Database failed: " + e.stack);
     });
 
+    window.db = db;
+
     return true;
 }
 
@@ -164,12 +166,14 @@ async function storeMessage(peerId, message) {
 async function getMessages(peerId, publicKey, privateKey, passphrase) {
     console.log('[LOG] Getting messages');
     try {
-        return await db.messages.where('peer_id').equals(peerId).sortBy('id').toArray().then(messages => {
+        return await db.messages.where('peer_id').equals(peerId).sortBy('id').then(messages => {
+            console.log(messages);
             let messageArray = [];
-            messages.forEach(async messageObj => messageArray.push({
-                message: await decrypt(messages['message'], publicKey, privateKey, passphrase),
+            messages.forEach(async messageObj => console.log(messageObj) & messageArray.push({
+                message: await decrypt(messageObj['message'], publicKey, privateKey, passphrase),
                 time: moment(messageObj['time']).fromNow()
             }));
+            console.log(messageArray);
             return messageArray;
         })
     } catch (e) {
