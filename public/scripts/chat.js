@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const encryption = require('./encryption');
 const wordList = require('./wordlist');
 const pinInput = require('./input_pin');
+const swal = require('sweetalert');
 const xkcdPassword = require('xkcd-password');
 
 // setup vars
@@ -54,7 +55,7 @@ async function evaluateKeyGeneration() {
                     encryption.reset();
                     console.error('Too many tries!');
                     pinInput.failure('This account got removed, the site will reload.');
-                    setTimeout(() => location.reload(), 1500)
+                    setTimeout(() => location.reload(true), 1500)
                 } else if (e === 'Not verified!') {
                     console.error(e);
                     pinInput.failure(e);
@@ -86,12 +87,16 @@ function chat() {
     const peer = new Peer(peerId, {host: host, port: 8080, path: '/api', debug: 0});
 
     // Peer events
-    peer.on('open', id => console.log('[LOG] Your ID is', id));
+    peer.on('open', id => {
+        console.log('[LOG] Your ID is', id);
+        swal('Hello world!', 'Your ID is "' + id + '".\nYou can share this ID with your friends so they can chat with you!', 'success')
+    });
     peer.on('error', err => console.error(err));
     peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept
     peer.on('connection', async conn => {
         connectedPeer = conn;
         console.log('[LOG] Connected with', connectedPeer.peer);
+        swal('New connection!', `You have successfully connected to the user ${connectedPeer.peer}!`, 'success');
         encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase).then(messages =>
             messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true))
         );
@@ -173,6 +178,24 @@ function chat() {
         return await sendMessage($('#message').val()) & $('#message').val('')
     }
 
+    /*+
+     * Shows warning message and deleted account
+     */
+    function deleteAccount() {
+        swal({
+            title: 'Are you sure?',
+            text: 'Once deleted, you will not be able to recover any messages or connections!',
+            icon: 'warning',
+            buttons: true,
+            dangerMode: true,
+        }).then(willDelete => {
+            if (willDelete) {
+                encryption.reset();
+                swal('Successfully deleted your data.', '', 'success').then(() => location.reload(true));
+            }
+        });
+    }
+
     /**
      * Click events
      */
@@ -183,15 +206,23 @@ function chat() {
         });
 
         // FABs
-        $('#add_peer_id').on('click', async () => await connect($('#peer_id').val()));
-        $('#logout').on('click', () => location.reload());
-        $('#delete').on('click', () => encryption.reset() & location.reload());
+        $('#logout').on('click', () => location.reload(true));
+        $('#delete').on('click', () => deleteAccount());
         $('#call').on('click', () => getMediaStream(stream => {
             call = peer.call(peerId, stream); // TODO: Encrypt call
             initCall(call)
         }));
 
-        $('[toggle-contact-modal]').on('click', () => $('#add_contact_modal').toggleClass('is-active'))
+        $('#add_contact').on('click', () => {
+            swal('Add a contact', {
+                content: 'input',
+                attributes: {
+                    placeholder: 'Contact ID',
+                },
+            }).then(contactId => connect(contactId).then(() =>
+                swal(`Successfully connected to "${contactId}"`, '', 'success')
+            ));
+        })
     });
 }
 

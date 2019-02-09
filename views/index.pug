@@ -8,7 +8,7 @@ block content
          See https://github.com/texxme/Texx/blob/master/LICENSE
 
     .chat#chat
-        button.button.action-button.is-big.is-outlined.is-info(toggle-contact-modal)
+        button.button.action-button.is-big.is-outlined.is-info#add_contact
             i.fas.fa-plus
         button.button.action-button.is-big.is-outlined.is-success#call
             i.fas.fa-phone
@@ -25,18 +25,6 @@ block content
                     input#message.message-input.input(placeholder='Enter a message')
                     button#send_message.message-button.button.is-success(type=submit)
                         i.fas.fa-paper-plane
-
-    .modal#add_contact_modal
-        .modal-background
-        .modal-card
-            header.modal-card-head
-                p.modal-card-title Add a contact
-                button.delete(aria-label='close', toggle-contact-modal)
-            section.modal-card-body
-                input#peer_id.input.is-focused(placeholder='Contact ID')
-            footer.modal-card-foot
-                button#add_peer_id.button.is-success(toggle-contact-modal) Add
-                button.button(aria-label='close', toggle-contact-modal) Cancel
 
     .enter-pin#enter_pin
         .title.has-text-centered Enter a passphrase:
