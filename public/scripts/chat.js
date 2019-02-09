@@ -87,15 +87,18 @@ function chat() {
     const peer = new Peer(peerId, {host: host, port: 8080, path: '/api', debug: 0});
 
     // Peer events
+    peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept
     peer.on('open', id => {
         console.log('[LOG] Your ID is', id);
         swal('Hello world!', 'Your ID is "' + id + '".\nYou can share this ID with your friends so they can chat with you!', 'success')
     });
-    peer.on('error', err => console.error(err));
-    peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept
+    peer.on('error', err => {
+        console.error(err);
+        swal('Connection lost!', '', 'error');
+    });
     peer.on('connection', async conn => {
         connectedPeer = conn;
-        console.log('[LOG] Connected with', connectedPeer.peer);
+        console.log('[LOG] Connected to', connectedPeer.peer);
         swal('New connection!', `You have successfully connected to the user ${connectedPeer.peer}!`, 'success');
         encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase).then(messages =>
             messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true))
@@ -116,16 +119,19 @@ function chat() {
         const connectionId = (await generator.generate()).join('-');
         console.log('[LOG] Connecting to', id);
         console.log('[LOG] Your connection ID is', connectionId);
-        connectedPeer = peer.connect(id, {label: connectionId, reliable: true});
+        connectedPeer = peer.connect(id, {label: connectionId});
         console.log('[LOG] Connected with', connectedPeer.peer);
         encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase).then(messages =>
             messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true))
         );
-        connectedPeer.on('open', async () => transferKey(await encryption.getPublic()));
+        connectedPeer.on('open', async () => {
+            swal(`Successfully connected to "${connectedPeer.peer}"!`, '', 'success');
+            transferKey(await encryption.getPublic())
+        });
         connectedPeer.on('data', async message => {
             console.log('[LOG] Received new message!');
             await receivedMessage(message);
-        })
+        });
     }
 
     /**
@@ -179,7 +185,7 @@ function chat() {
     }
 
     /*+
-     * Shows warning message and deleted account
+     * Shows warning modal and deletes account
      */
     function deleteAccount() {
         swal({
@@ -197,6 +203,25 @@ function chat() {
     }
 
     /**
+     * Shows modal for adding a contact
+     */
+    function addContact() {
+        swal('Add a contact', {
+            content: 'input',
+            attributes: {
+                placeholder: 'Contact ID',
+            },
+        }).then(contactId => connect(contactId).then(() => swal({
+            title: 'Connecting...',
+            icon: 'info',
+            text: ' ',
+            buttons: false,
+            closeOnClickOutside: false,
+            closeOnEsc: false
+        })))
+    }
+
+    /**
      * Click events
      */
     $(document).ready(() => {
@@ -206,23 +231,13 @@ function chat() {
         });
 
         // FABs
+        $('#add_contact').on('click', () => addContact());
         $('#logout').on('click', () => location.reload(true));
         $('#delete').on('click', () => deleteAccount());
         $('#call').on('click', () => getMediaStream(stream => {
             call = peer.call(peerId, stream); // TODO: Encrypt call
             initCall(call)
         }));
-
-        $('#add_contact').on('click', () => {
-            swal('Add a contact', {
-                content: 'input',
-                attributes: {
-                    placeholder: 'Contact ID',
-                },
-            }).then(contactId => connect(contactId).then(() =>
-                swal(`Successfully connected to "${contactId}"`, '', 'success')
-            ));
-        })
     });
 }
 
