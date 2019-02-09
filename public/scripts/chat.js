@@ -211,14 +211,19 @@ function chat() {
             attributes: {
                 placeholder: 'Contact ID',
             },
-        }).then(contactId => connect(contactId).then(() => swal({
-            title: 'Connecting...',
-            icon: 'info',
-            text: ' ',
-            buttons: false,
-            closeOnClickOutside: false,
-            closeOnEsc: false
-        })))
+        }).then(contactId => {
+            if (contactId.match(/^([a-zA-Z]*-[a-zA-Z]*)+$/)) {
+                connect(contactId).then(() => swal({
+                    title: 'Connecting...',
+                    icon: 'info',
+                    text: ' ',
+                    buttons: false,
+                    closeOnClickOutside: false,
+                    closeOnEsc: false
+                }))
+            } else
+                swal('Invalid ID!', '', 'error')
+        })
     }
 
     /**
