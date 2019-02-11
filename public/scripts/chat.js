@@ -173,7 +173,7 @@ function chat() {
             if (message.type === 'text') {
                 await encryption.storeMsg(connectedPeer.peer, message.data, passphrase);
                 await encryption.decrypt(message.data, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase)
-                    .then(plaintext => $('#messages').append(`${plaintext}<br>`));
+                    .then(plaintext => $('#messages').append(`<span>${plaintext}</span><br>`));
             } else if (message.type === 'key') {
                 await encryption.store(connectedPeer.peer, message.data)
             }
@@ -243,6 +243,10 @@ function chat() {
         $('#add_contact').on('click', () => addContact());
         $('#logout').on('click', () => location.reload(true));
         $('#delete').on('click', () => deleteAccount());
+        $('#anonymize').on('click', () => {
+            peer.disconnect();
+            swal('Disconnected from broker server!', 'You will still be able to send and receive messages.', 'success')
+        });
         $('#call').on('click', () => getMediaStream(stream => {
             call = peer.call(peerId, stream); // TODO: Encrypt call
             initCall(call)
