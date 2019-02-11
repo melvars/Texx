@@ -9,6 +9,7 @@ const Dexie = require('dexie');
 const moment = require('moment');
 const crypto = require('crypto');
 const openpgp = require('openpgp');
+const swal = require('sweetalert');
 
 // compress encryption data
 openpgp.config.compression = openpgp.enums.compression.zlib;
@@ -32,6 +33,7 @@ function setupDatabase() {
     db.open().catch(e => {
         localStorage.setItem('database', 'failed');
         console.error("Database failed: " + e.stack);
+        swal('Could not create the local database!', 'Please try loading this site from a different browser', 'error');
     });
 
     window.db = db;
@@ -235,7 +237,8 @@ async function getPeerPublicKey(peerId) {
             const publicKeyUserId = await getPublicKeyUserId(publicKey);
             if (publicKeyUserId !== peerId) {
                 publicKey = '';
-                console.error('[LOG] Public key verification failed! The peers real identity is ' + publicKeyUserId)
+                console.error('[LOG] Public key verification failed! The peers real identity is ' + publicKeyUserId);
+                swal('There\'s something strange going on here!', 'The peers ID could not be verified! His real ID is ' + publicKeyUserId, 'error');
             } else
                 console.log('[LOG] Public key verification succeeded!')
         } else

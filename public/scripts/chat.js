@@ -94,7 +94,11 @@ function chat() {
     });
     peer.on('error', err => {
         console.error(err);
-        swal('Connection lost!', '', 'error');
+        if (err.type === 'network') swal('Connection to server lost!', '', 'error');
+        else if (err.type === 'browser-incompatible') swal('Your server is not compatible!', 'Please update or use another browser!', 'error');
+        else if (err.type === 'peer-unavailable') swal('Peer could not be found!', '', 'error');
+        else if (err.type === 'unavailable-id') swal('Ou snap! Your ID isn\'t available!', '', 'error');
+        else swal('Unhandled Error!', 'You just threw up this error: ' + err.type, 'error');
     });
     peer.on('connection', async conn => {
         connectedPeer = conn;
