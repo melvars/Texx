@@ -244,8 +244,14 @@ function chat() {
         $('#logout').on('click', () => location.reload(true));
         $('#delete').on('click', () => deleteAccount());
         $('#anonymize').on('click', () => {
-            peer.disconnect();
-            swal('Disconnected from broker server!', 'You will still be able to send and receive messages.', 'success')
+            if (peer.disconnected) {
+                swal('Reconnected to broker server!', 'You can now connect to new peers again.', 'success').then(() =>
+                    peer.reconnect()
+                )
+            } else {
+                peer.disconnect();
+                swal('Disconnected from broker server!', 'You will still be able to send and receive messages.', 'success')
+            }
         });
         $('#call').on('click', () => getMediaStream(stream => {
             call = peer.call(peerId, stream); // TODO: Encrypt call
