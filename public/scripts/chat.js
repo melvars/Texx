@@ -15,7 +15,7 @@ const swal = require('sweetalert');
 const xkcdPassword = require('xkcd-password');
 
 // setup vars
-const host = '127.0.0.1';
+const host = 'meta.marvinborner.de';
 let peerId, call, passphrase, connectedPeer;
 let connectedPeers = []; // TODO: Save new peers in array
 
@@ -84,7 +84,7 @@ function chat() {
     $('#chat').fadeIn();
 
     // start the peer
-    const peer = new Peer(peerId, {host: host, port: 8080, path: '/api', debug: 0});
+    const peer = new Peer(peerId, {host: host, port: 4242, path: '/api', debug: 0});
 
     // Peer events
     peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept
