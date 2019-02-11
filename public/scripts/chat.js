@@ -211,6 +211,7 @@ function chat() {
      */
     function addContact() {
         swal('Add a contact', {
+            buttons: true,
             content: 'input',
             attributes: {
                 placeholder: 'Contact ID',
