@@ -16,9 +16,10 @@
     "scripts": {
         "dev": "npm run watch & nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
         "watch": "npm run debug && onchange public/styles/* -- npm run css & onchange public/scripts/* -- npm run debug",
-        "css": "node-sass public/styles/main.sass dist/app.css --output-style compressed",
+        "css": "node-sass public/styles/main.sass dist/app.css",
         "debug": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/app.js",
-        "build": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/temp.js && minify dist/temp.js > dist/app.js && rm dist/temp.js && pug views/index.pug --out dist"
+        "build": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/temp.js && minify dist/temp.js > dist/app.js && rm dist/temp.js && pug views/index.pug --out dist",
+        "single": "rm -rf dist/* && node-sass public/styles/main.sass dist/temp.css && minify dist/temp.css > dist/app.css && browserify public/scripts/main.js -o dist/temp.js && minify dist/temp.js > dist/app.js && rm dist/temp.* && pug views/index.pug --out dist && echo '<script>'$(cat dist/app.js)'</script>' >> dist/index.html && echo '<style>'$(cat dist/app.css)'</style>' >> dist/index.html && html-minifier --collapse-whitespace --remove-comments --remove-optional-tags --remove-redundant-attributes --remove-script-type-attributes --remove-tag-whitespace --use-short-doctype --minify-css true --minify-js true dist/index.html > dist/complete.html"
     },
     "keywords": [
         "express",
@@ -43,6 +44,7 @@
         "drag-drop": "^4.2.0",
         "ejs": "^2.6.1",
         "express": "^4.16.4",
+        "html-minifier": "^3.5.21",
         "jquery": "^3.3.1",
         "minify": "^4.1.0",
         "moment": "^2.24.0",
