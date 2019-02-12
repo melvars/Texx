@@ -47,6 +47,8 @@ async function evaluateKeyGeneration() {
         pinInput.init(async (pin, tryCount) => {
             try {
                 if (await encryption.getId(await encryption.getPublic()) !== peerId) throw "Not verified!";
+                const fingerPrint = encryption.getFingerprint(pin);
+                console.log(fingerPrint);
                 passphrase = new Buffer(crypto.createHmac('SHA256', pin).update(pin).digest('hex')).toString('base64');
                 await encryption.decryptPrivate(await encryption.getPrivate(), passphrase);
                 chat()
@@ -84,7 +86,7 @@ function chat() {
     $('#chat').fadeIn();
 
     // start the peer
-    const peer = new Peer(peerId, {host: host, port: 4242, path: '/api', debug: 0});
+    const peer = new Peer(peerId, {host: host, port: 4242, path: '/api', secure: true, debug: 0});
 
     // Peer events
     peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept

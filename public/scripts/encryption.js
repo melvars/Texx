@@ -8,6 +8,8 @@
 const Dexie = require('dexie');
 const moment = require('moment');
 const crypto = require('crypto');
+const jsSHA = require("jssha");
+const fingerprint = require('fingerprintjs2');
 const openpgp = require('openpgp');
 const swal = require('sweetalert');
 
@@ -248,6 +250,21 @@ async function getPeerPublicKey(peerId) {
 }
 
 /**
+ * Gets the unique fingerprint of the user
+ * @param passphrase
+ * @returns {Promise<String>}
+ */
+async function getUniqueFingerprint(passphrase) {
+    return await fingerprint.get(components => {
+        const passphraseHash = new Buffer(crypto.createHmac('SHA256', passphrase).update(passphrase).digest('hex')).toString('HEX');
+        const userFingerprint = fingerprint.x64hash128(components.map(pair => pair.value).join(), 31);
+        console.log(passphraseHash + " - " + userFingerprint);
+        console.log(new Buffer(crypto.createHmac('SHA256', userFingerprint + passphraseHash).update(userFingerprint + passphraseHash).digest('hex')).toString('HEX'));
+        return new Buffer(crypto.createHmac('SHA256', userFingerprint + passphraseHash).update(userFingerprint + passphraseHash).digest('hex')).toString('HEX');
+    })
+}
+
+/**
  * Returns user id of a public key
  * @param publicKey
  * @returns {Promise<String>}
@@ -279,4 +296,5 @@ exports.getMsgs = getMessages;
 exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
 exports.getId = getPublicKeyUserId;
+exports.getFingerprint = getUniqueFingerprint;
 exports.reset = reset;
