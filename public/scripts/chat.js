@@ -52,10 +52,10 @@ async function evaluateKeyGeneration() {
       try {
         if (await encryption.getPublicKeyPeerId(await encryption.getPublicKey()) !== peerId
           || await encryption.getPublicKeyFingerprint(await encryption.getPublicKey())
-          !== await encryption.generateFingerprint(pin)) {
+          !== await encryption.getPublicFingerprint()) {
           throw 'Not verified!';
         }
-        fingerprint = await encryption.generateFingerprint(pin);
+        fingerprint = await encryption.generatePrivateFingerprint(pin);
         await encryption.decryptPrivateKey(await encryption.getPrivateKey(), fingerprint);
         chat();
       } catch (err) { // decrypting failed
@@ -77,7 +77,7 @@ async function evaluateKeyGeneration() {
     pinInput.init(async (pin) => {
       console.log('[LOG] No existing keys found! Generating...');
       pinInput.generate();
-      fingerprint = await encryption.generateFingerprint(pin);
+      fingerprint = await encryption.generatePrivateFingerprint(pin);
       await encryption.generateKeys(peerId, fingerprint)
         .then(() => chat());
     });
@@ -141,7 +141,8 @@ function chat() {
     encryption.getMessages(
       connectedPeer.peer,
       await encryption.getPeerPublicKey(connectedPeer.peer),
-      await encryption.getPrivateKey(), fingerprint,
+      await encryption.getPrivateKey(),
+      fingerprint,
     )
       .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
     connectedPeer.on('open', async () => transferKey(await encryption.getPublicKey()));
@@ -161,11 +162,12 @@ function chat() {
     console.log('[LOG] Connecting to', id);
     console.log('[LOG] Your connection ID is', connectionId);
     connectedPeer = peer.connect(id, { label: connectionId });
-    console.log('[LOG] Connected with', connectedPeer.peer);
+    console.log('[LOG] Connected to', connectedPeer.peer);
     encryption.getMessages(
       connectedPeer.peer,
       await encryption.getPeerPublicKey(connectedPeer.peer),
-      await encryption.getPrivateKey(), fingerprint,
+      await encryption.getPrivateKey(),
+      fingerprint,
     )
       .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
     connectedPeer.on('open', async () => {

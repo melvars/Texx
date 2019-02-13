@@ -9,7 +9,7 @@ const Dexie = require('dexie');
 const moment = require('moment');
 const crypto = require('crypto');
 const JsSHA = require('jssha');
-const fingerprintjs = require('fingerprintjs2');
+const fingerprintJs = require('fingerprintjs2');
 const openpgp = require('openpgp');
 const swal = require('sweetalert');
 
@@ -30,14 +30,15 @@ const self = module.exports = {
         own_keys: '&key_type, key_data',
         peer_keys: 'peer_id, key_data',
         messages: '++id, peer_id, message, time',
+        contacts: 'peer_id, fingerprint',
       });
 
     localStorage.setItem('database', 'success');
 
     db.open()
-      .catch((e) => {
+      .catch((err) => {
         localStorage.setItem('database', 'failed');
-        console.error(`Database failed: ${e.stack}`);
+        console.error(`Database failed: ${err.stack}`);
         swal('Could not create the local database!', 'Please try loading this site from a different browser', 'error');
       });
 
@@ -51,10 +52,12 @@ const self = module.exports = {
    * @returns {Promise<void>}
    */
   generateKeys: async (peerId, fingerprint) => {
+    await self.generatePublicFingerprint();
+
     const options = {
       userIds: [{
         name: peerId,
-        comment: fingerprint,
+        comment: await self.getPublicFingerprint(),
       }],
       curve: 'ed25519',
       passphrase: fingerprint,
@@ -231,10 +234,24 @@ const self = module.exports = {
         });
       }
       return messageArray;
-    } catch (e) {
+    } catch (err) {
       console.log('[LOG] No messages found!');
       return [];
     }
+  },
+
+  /**
+   * Saves a peer to the contacts
+   * @param peerId
+   * @returns {Promise<void>}
+   */
+  savePeer: async (peerId) => {
+    db.contacts.put({
+      peer_id: peerId,
+      fingerprint: await self.getPublicKeyFingerprint(await self.getPeerPublicKey(peerId)),
+    })
+      .then(() => console.log(`[LOG] Stored fingerprint of ${peerId}`))
+      .catch(err => console.error(err));
   },
 
   /**
@@ -247,7 +264,11 @@ const self = module.exports = {
       peer_id: peerId,
       key_data: key,
     })
-      .then(() => console.log(`[LOG] Stored public key of ${peerId}`));
+      .then(() => {
+        self.savePeer(peerId);
+        console.log(`[LOG] Stored public key of ${peerId}`);
+      })
+      .catch(err => console.error(err));
   },
 
   /**
@@ -278,7 +299,7 @@ const self = module.exports = {
     }),
 
   /**
-   * Returns peer id of a public key
+   * Gets the peer id of a public key
    * @param publicKey
    * @returns {Promise<String>}
    */
@@ -292,9 +313,9 @@ const self = module.exports = {
    * @param passphrase
    * @returns {Promise<String>}
    */
-  generateFingerprint: passphrase => fingerprintjs.getPromise()
+  generatePrivateFingerprint: passphrase => fingerprintJs.getPromise()
     .then((components) => {
-      const fingerprintHash = fingerprintjs.x64hash128(components.map(pair => pair.value)
+      const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
       let shaObj = new JsSHA('SHA3-512', 'TEXT');
       shaObj.update(passphrase);
@@ -306,7 +327,36 @@ const self = module.exports = {
     }),
 
   /**
-   * Returns fingerprint of a public key
+   * Gets the unique fingerprint of the peer, generated using every data javascript can get from the
+   * browser and a randomly generated string
+   * @returns {Promise<void>}
+   */
+  generatePublicFingerprint: () => fingerprintJs.getPromise()
+    .then(async (components) => {
+      const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
+        .join(), 31);
+      const shaObj = new JsSHA('SHA3-512', 'TEXT');
+      shaObj.update(fingerprintHash);
+      shaObj.update(Math.random()
+        .toString(10));
+      await db.own_keys.put({
+        key_type: 'public_fingerprint',
+        key_data: shaObj.getHash('HEX'),
+      });
+    }),
+
+  /**
+   * Gets the public fingerprint of the peer
+   * @returns {Dexie.Promise<Dexie.Promise<string>>}
+   */
+  getPublicFingerprint: async () => db.own_keys.where('key_type')
+    .equals('public_fingerprint')
+    .limit(1)
+    .toArray()
+    .then(res => (res.length > 0 ? res[0].key_data : '')),
+
+  /**
+   * Gets the fingerprint of a public key
    * @param publicKey
    * @returns {Promise<String>}
    */
