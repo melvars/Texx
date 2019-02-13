@@ -7,7 +7,6 @@
 
 // general imports
 const $ = require('jquery');
-const crypto = require('crypto');
 const encryption = require('./encryption');
 const wordList = require('./wordlist');
 const pinInput = require('./input_pin');
@@ -16,7 +15,7 @@ const xkcdPassword = require('xkcd-password');
 
 // setup vars
 const host = 'meta.marvinborner.de';
-let peerId, call, passphrase, connectedPeer;
+let peerId, call, fingerprint, connectedPeer;
 let connectedPeers = []; // TODO: Save new peers in array
 
 // setup generator
@@ -46,33 +45,32 @@ async function evaluateKeyGeneration() {
     if (localStorage.getItem('database') === 'success' && await encryption.check()) {
         pinInput.init(async (pin, tryCount) => {
             try {
-                if (await encryption.getId(await encryption.getPublic()) !== peerId) throw "Not verified!";
-                const fingerPrint = encryption.getFingerprint(pin);
-                console.log(fingerPrint);
-                passphrase = new Buffer(crypto.createHmac('SHA256', pin).update(pin).digest('hex')).toString('base64');
-                await encryption.decryptPrivate(await encryption.getPrivate(), passphrase);
+                if (await encryption.getId(await encryption.getPublic()) !== peerId ||
+                    await encryption.getFingerprint(await encryption.getPublic()) !== await encryption.generateFingerprint(pin)) throw "Not verified!";
+                fingerprint = await encryption.generateFingerprint(pin);
+                await encryption.decryptPrivate(await encryption.getPrivate(), fingerprint);
                 chat()
-            } catch (e) { // decrypting failed
+            } catch (err) { // decrypting failed
                 if (tryCount === 3) {
                     encryption.reset();
                     console.error('Too many tries!');
                     pinInput.failure('This account got removed, the site will reload.');
                     setTimeout(() => location.reload(true), 1500)
-                } else if (e === 'Not verified!') {
-                    console.error(e);
-                    pinInput.failure(e);
+                } else if (err === 'Not verified!') {
+                    console.error(err);
+                    pinInput.failure(err);
                 } else {
-                    console.error('Passphrase is wrong!');
-                    pinInput.failure('Passphrase is wrong!');
+                    console.error(err);
+                    pinInput.failure(err.message);
                 }
             }
         });
     } else {
-        pinInput.init(pin => {
+        pinInput.init(async pin => {
             console.log('[LOG] No existing keys found! Generating...');
             pinInput.generate();
-            passphrase = new Buffer(crypto.createHmac('SHA256', pin).update(pin).digest('hex')).toString('base64');
-            (async () => await encryption.generate(peerId, passphrase).then(() => chat()))()
+            fingerprint = await encryption.generateFingerprint(pin);
+            await encryption.generate(peerId, fingerprint).then(() => chat())
         });
     }
 }
@@ -106,7 +104,7 @@ function chat() {
         connectedPeer = conn;
         console.log('[LOG] Connected to', connectedPeer.peer);
         swal('New connection!', `You have successfully connected to the user ${connectedPeer.peer}!`, 'success');
-        encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase).then(messages =>
+        encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), fingerprint).then(messages =>
             messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true))
         );
         connectedPeer.on('open', async () => transferKey(await encryption.getPublic()));
@@ -127,7 +125,7 @@ function chat() {
         console.log('[LOG] Your connection ID is', connectionId);
         connectedPeer = peer.connect(id, {label: connectionId});
         console.log('[LOG] Connected with', connectedPeer.peer);
-        encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase).then(messages =>
+        encryption.getMsgs(connectedPeer.peer, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), fingerprint).then(messages =>
             messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true))
         );
         connectedPeer.on('open', async () => {
@@ -149,7 +147,7 @@ function chat() {
         console.log(`[LOG] Sending message '${message}' to ${connectedPeer.peer}`);
         connectedPeer.send({
             type: 'text',
-            data: await encryption.encrypt(message, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase)
+            data: await encryption.encrypt(message, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), fingerprint)
         });
         await receivedMessage(message, true);
     }
@@ -173,8 +171,8 @@ function chat() {
             $('#messages').append(`<span style="color: green">${message}</span><br>`);
         } else {
             if (message.type === 'text') {
-                await encryption.storeMsg(connectedPeer.peer, message.data, passphrase);
-                await encryption.decrypt(message.data, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), passphrase)
+                await encryption.storeMsg(connectedPeer.peer, message.data, fingerprint);
+                await encryption.decrypt(message.data, await encryption.get(connectedPeer.peer), await encryption.getPrivate(), fingerprint)
                     .then(plaintext => $('#messages').append(`<span>${plaintext}</span><br>`));
             } else if (message.type === 'key') {
                 await encryption.store(connectedPeer.peer, message.data)

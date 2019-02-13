@@ -13,10 +13,10 @@ const fingerprint = require('fingerprintjs2');
 const openpgp = require('openpgp');
 const swal = require('sweetalert');
 
+let db;
+
 // compress encryption data
 openpgp.config.compression = openpgp.enums.compression.zlib;
-
-let db;
 
 /**
  * Generates database and tables
@@ -38,22 +38,20 @@ function setupDatabase() {
         swal('Could not create the local database!', 'Please try loading this site from a different browser', 'error');
     });
 
-    window.db = db;
-
     return true;
 }
 
 /**
  * Generates and stores encrypted private key, public key and a revocation certificate
  * @param peerId
- * @param passphrase
+ * @param fingerprint
  * @returns {Promise<void>}
  */
-async function generateKeys(peerId, passphrase) {
+async function generateKeys(peerId, fingerprint) {
     const options = {
-        userIds: [{name: peerId}],
+        userIds: [{name: peerId, comment: fingerprint}],
         curve: 'ed25519',
-        passphrase: passphrase
+        passphrase: fingerprint
     };
 
     openpgp.generateKey(options).then(async (key) => {
@@ -89,11 +87,11 @@ async function getPublicKey() {
  * @param data
  * @param publicKey
  * @param privateKey
- * @param passphrase
+ * @param fingerprint
  * @returns {Promise<String>}
  */
-async function encrypt(data, publicKey, privateKey, passphrase) {
-    const privateKeyObj = await decryptPrivateKey(privateKey, passphrase);
+async function encrypt(data, publicKey, privateKey, fingerprint) {
+    const privateKeyObj = await decryptPrivateKey(privateKey, fingerprint);
 
     const options = {
         message: openpgp.message.fromText(data),
@@ -109,11 +107,11 @@ async function encrypt(data, publicKey, privateKey, passphrase) {
  * @param data
  * @param publicKey
  * @param privateKey
- * @param passphrase
+ * @param fingerprint
  * @returns {Promise<String>}
  */
-async function decrypt(data, publicKey, privateKey, passphrase) {
-    const privateKeyObj = await decryptPrivateKey(privateKey, passphrase);
+async function decrypt(data, publicKey, privateKey, fingerprint) {
+    const privateKeyObj = await decryptPrivateKey(privateKey, fingerprint);
 
     const options = {
         message: await openpgp.message.readArmored(data),
@@ -127,12 +125,12 @@ async function decrypt(data, publicKey, privateKey, passphrase) {
 /**
  * Decrypts the private key
  * @param privateKey
- * @param passphrase
+ * @param fingerprint
  * @returns {Promise<module:key.Key>}
  */
-async function decryptPrivateKey(privateKey, passphrase) {
+async function decryptPrivateKey(privateKey, fingerprint) {
     const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
-    await privateKeyObj.decrypt(passphrase);
+    await privateKeyObj.decrypt(fingerprint);
     return privateKeyObj;
 }
 
@@ -154,11 +152,11 @@ async function isEncrypted() {
 /**
  * Encrypts a message
  * @param message
- * @param passphrase
+ * @param fingerprint
  * @returns {string}
  */
-function encryptMessage(message, passphrase) {
-    const cipher = crypto.createCipher('aes-256-ctr', passphrase);
+function encryptMessage(message, fingerprint) {
+    const cipher = crypto.createCipher('aes-256-ctr', fingerprint);
     const plaintext = cipher.update(message, 'utf8', 'hex');
     console.log('[LOG] Encrypted message successfully!');
     return plaintext + cipher.final('hex');
@@ -167,11 +165,11 @@ function encryptMessage(message, passphrase) {
 /**
  * Decrypts a message
  * @param message
- * @param passphrase
+ * @param fingerprint
  * @returns {string}
  */
-function decryptMessage(message, passphrase) {
-    const cipher = crypto.createCipher('aes-256-ctr', passphrase);
+function decryptMessage(message, fingerprint) {
+    const cipher = crypto.createCipher('aes-256-ctr', fingerprint);
     const plaintext = cipher.update(message, 'hex', 'utf8');
     console.log('[LOG] Decrypted message successfully!');
     return plaintext + cipher.final('utf8');
@@ -181,10 +179,10 @@ function decryptMessage(message, passphrase) {
  * Stores a message // TODO: Store and get own messages too
  * @param peerId
  * @param message
- * @param passphrase
+ * @param fingerprint
  */
-async function storeMessage(peerId, message, passphrase) {
-    db.messages.put({peer_id: peerId, message: encryptMessage(message, passphrase), time: new Date()}).then(() =>
+async function storeMessage(peerId, message, fingerprint) {
+    db.messages.put({peer_id: peerId, message: encryptMessage(message, fingerprint), time: new Date()}).then(() =>
         console.log('[LOG] Stored message of ' + peerId)
     );
 }
@@ -194,17 +192,17 @@ async function storeMessage(peerId, message, passphrase) {
  * @param peerId
  * @param publicKey
  * @param privateKey
- * @param passphrase
+ * @param fingerprint
  * @returns {Promise<Array>}
  */
-async function getMessages(peerId, publicKey, privateKey, passphrase) {
+async function getMessages(peerId, publicKey, privateKey, fingerprint) {
     console.log('[LOG] Getting messages...');
     try {
         const messages = await db.messages.where('peer_id').equals(peerId).sortBy('id');
         let messageArray = [];
         for (let i = messages.length; i--;) {
             await messageArray.push({
-                message: await decrypt(decryptMessage(messages[i]['message'], passphrase), publicKey, privateKey, passphrase),
+                message: await decrypt(decryptMessage(messages[i]['message'], fingerprint), publicKey, privateKey, fingerprint),
                 time: moment(messages[i]['time']).fromNow()
             })
         }
@@ -236,11 +234,11 @@ async function getPeerPublicKey(peerId) {
         let publicKey;
         if (res.length > 0) {
             publicKey = res[0]['key_data'];
-            const publicKeyUserId = await getPublicKeyUserId(publicKey);
-            if (publicKeyUserId !== peerId) {
+            const publicKeyPeerId = await getPublicKeyPeerId(publicKey);
+            if (publicKeyPeerId !== peerId) {
                 publicKey = '';
-                console.error('[LOG] Public key verification failed! The peers real identity is ' + publicKeyUserId);
-                swal('There\'s something strange going on here!', 'The peers ID could not be verified! His real ID is ' + publicKeyUserId, 'error');
+                console.error('[LOG] Public key verification failed! The peers real identity is ' + publicKeyPeerId);
+                swal('There\'s something strange going on here!', 'The peers ID could not be verified! His real ID is ' + publicKeyPeerId, 'error');
             } else
                 console.log('[LOG] Public key verification succeeded!')
         } else
@@ -250,27 +248,40 @@ async function getPeerPublicKey(peerId) {
 }
 
 /**
- * Gets the unique fingerprint of the user
+ * Returns peer id of a public key
+ * @param publicKey
+ * @returns {Promise<String>}
+ */
+async function getPublicKeyPeerId(publicKey) {
+    return (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser().then(obj => obj.user.userId.userid.replace(/ \((.+?)\)/g, "")) || '';
+}
+
+/**
+ * Gets the unique fingerprint of the peer, generated using every data javascript can get from the browser
+ * and the hashed passphrase of the peer
  * @param passphrase
  * @returns {Promise<String>}
  */
-async function getUniqueFingerprint(passphrase) {
-    return await fingerprint.get(components => {
-        const passphraseHash = new Buffer(crypto.createHmac('SHA256', passphrase).update(passphrase).digest('hex')).toString('HEX');
-        const userFingerprint = fingerprint.x64hash128(components.map(pair => pair.value).join(), 31);
-        console.log(passphraseHash + " - " + userFingerprint);
-        console.log(new Buffer(crypto.createHmac('SHA256', userFingerprint + passphraseHash).update(userFingerprint + passphraseHash).digest('hex')).toString('HEX'));
-        return new Buffer(crypto.createHmac('SHA256', userFingerprint + passphraseHash).update(userFingerprint + passphraseHash).digest('hex')).toString('HEX');
+function generateFingerprint(passphrase) {
+    return fingerprint.getPromise().then(components => {
+        const fingerprintHash = fingerprint.x64hash128(components.map(pair => pair.value).join(), 31);
+        let shaObj = new jsSHA('SHA3-512', 'TEXT');
+        shaObj.update(passphrase);
+        const passphraseHash = shaObj.getHash('HEX');
+        shaObj = new jsSHA('SHA3-512', 'TEXT');
+        shaObj.update(passphraseHash);
+        shaObj.update(fingerprintHash);
+        return shaObj.getHash('HEX');
     })
 }
 
 /**
- * Returns user id of a public key
+ * Returns fingerprint of a public key
  * @param publicKey
  * @returns {Promise<String>}
  */
-async function getPublicKeyUserId(publicKey) {
-    return (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser().then(obj => obj.user.userId.userid) || '';
+async function getPublicKeyFingerprint(publicKey) {
+    return (await openpgp.key.readArmored(publicKey)).keys[0].getPrimaryUser().then(obj => obj.user.userId.userid.match(/\((.*)\)/)[1]) || '';
 }
 
 /**
@@ -295,6 +306,7 @@ exports.storeMsg = storeMessage;
 exports.getMsgs = getMessages;
 exports.store = storePeerPublicKey;
 exports.get = getPeerPublicKey;
-exports.getId = getPublicKeyUserId;
-exports.getFingerprint = getUniqueFingerprint;
+exports.getId = getPublicKeyPeerId;
+exports.generateFingerprint = generateFingerprint;
+exports.getFingerprint = getPublicKeyFingerprint;
 exports.reset = reset;
