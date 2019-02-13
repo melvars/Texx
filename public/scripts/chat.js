@@ -129,24 +129,50 @@ function chat() {
     }
   });
 
-  peer.on('connection', async (conn) => {
-    connectedPeer = conn;
-    console.log('[LOG] Connected to', connectedPeer.peer);
-    swal(
-      'New connection!',
-      `You have successfully connected to the user ${connectedPeer.peer}!`,
-      'success',
-    );
-    encryption.getMessages(
-      connectedPeer.peer,
-      await encryption.getPeerPublicKey(connectedPeer.peer),
-    )
-      .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
-    connectedPeer.on('open', async () => transferKey(await encryption.getPublicKey()));
-    connectedPeer.on('data', async (message) => {
-      console.log('[LOG] Received new message!');
-      await receivedMessage(message);
-    });
+  peer.on('connection', (conn) => {
+    swal({
+      title: 'Connection request',
+      text: `The user "${conn.peer}" wants to connect to you.\nThis gets cancelled in 3 seconds.`,
+      timer: 3000,
+      icon: 'info',
+      buttons: true,
+    })
+      .then(async (accepted) => {
+        if (accepted) {
+          connectedPeer = conn;
+          connectedPeer.send({
+            type: 'state',
+            data: 'accepted',
+          });
+          connectedPeer.on('data', async (state) => {
+            if (state.data === 'received') {
+              console.log('[LOG] Connected to', connectedPeer.peer);
+              swal(
+                'New connection!',
+                `You have successfully connected to the user "${connectedPeer.peer}"!`,
+                'success',
+              );
+              encryption.getMessages(
+                connectedPeer.peer,
+                await encryption.getPeerPublicKey(connectedPeer.peer),
+              )
+                .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
+              connectedPeer.on('open', async () => transferKey(await encryption.getPublicKey()));
+              connectedPeer.on('data', async (message) => {
+                console.log('[LOG] Received new message!');
+                await receivedMessage(message);
+              });
+            }
+          });
+        } else {
+          console.log(`[LOG] Declined connection request of ${conn.peer}`);
+          conn.send({
+            type: 'state',
+            data: 'declined',
+          });
+          conn.close();
+        }
+      });
   });
 
   /**
@@ -159,19 +185,30 @@ function chat() {
     console.log('[LOG] Connecting to', id);
     console.log('[LOG] Your connection ID is', connectionId);
     connectedPeer = peer.connect(id, { label: connectionId });
-    console.log('[LOG] Connected to', connectedPeer.peer);
-    encryption.getMessages(
-      connectedPeer.peer,
-      await encryption.getPeerPublicKey(connectedPeer.peer),
-    )
-      .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
-    connectedPeer.on('open', async () => {
-      swal(`Successfully connected to "${connectedPeer.peer}"!`, '', 'success');
-      transferKey(await encryption.getPublicKey());
-    });
-    connectedPeer.on('data', async (message) => {
-      console.log('[LOG] Received new message!');
-      await receivedMessage(message);
+    connectedPeer.on('data', async (state) => {
+      if (state.type === 'state' && state.data === 'accepted') {
+        connectedPeer.send({
+          type: 'state',
+          data: 'received',
+        });
+        console.log('[LOG] Connected to', connectedPeer.peer);
+        swal(`Successfully connected to "${connectedPeer.peer}"!`, '', 'success');
+        transferKey(await encryption.getPublicKey());
+        encryption.getMessages(
+          connectedPeer.peer,
+          await encryption.getPeerPublicKey(connectedPeer.peer),
+        )
+          .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
+        connectedPeer.on('data', async (message) => {
+          console.log('[LOG] Received new message!');
+          await receivedMessage(message);
+        });
+        connectedPeer.on('close', () => {
+          swal('Disconnected!', `The connection to "${connectedPeer.peer}" has been closed!`, 'error');
+        });
+      } else if (state.type === 'state') {
+        swal('Declined!', `The user "${connectedPeer.peer}" has declined your connection request.`, 'error');
+      }
     });
   }
 
