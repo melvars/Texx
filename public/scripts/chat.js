@@ -140,7 +140,7 @@ function chat() {
     );
     encryption.getMessages(
       connectedPeer.peer,
-      await encryption.getPublicKeyPeerId(connectedPeer.peer),
+      await encryption.getPeerPublicKey(connectedPeer.peer),
       await encryption.getPrivateKey(), fingerprint,
     )
       .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
@@ -164,7 +164,7 @@ function chat() {
     console.log('[LOG] Connected with', connectedPeer.peer);
     encryption.getMessages(
       connectedPeer.peer,
-      await encryption.getPublicKeyPeerId(connectedPeer.peer),
+      await encryption.getPeerPublicKey(connectedPeer.peer),
       await encryption.getPrivateKey(), fingerprint,
     )
       .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
