@@ -17,7 +17,6 @@ const pinInput = require('./input_pin');
 const host = 'meta.marvinborner.de';
 let peerId;
 let call;
-let fingerprint;
 let connectedPeer;
 const connectedPeers = []; // TODO: Save new peers in array
 
@@ -55,8 +54,8 @@ async function evaluateKeyGeneration() {
           !== await encryption.getPublicFingerprint()) {
           throw 'Not verified!';
         }
-        fingerprint = await encryption.generatePrivateFingerprint(pin);
-        await encryption.decryptPrivateKey(await encryption.getPrivateKey(), fingerprint);
+        await encryption.generatePrivateFingerprint(pin);
+        await encryption.decryptPrivateKey();
         chat();
       } catch (err) { // decrypting failed
         if (tryCount === 3) {
@@ -77,8 +76,8 @@ async function evaluateKeyGeneration() {
     pinInput.init(async (pin) => {
       console.log('[LOG] No existing keys found! Generating...');
       pinInput.generate();
-      fingerprint = await encryption.generatePrivateFingerprint(pin);
-      await encryption.generateKeys(peerId, fingerprint)
+      await encryption.generatePrivateFingerprint(pin);
+      await encryption.generateKeys(peerId)
         .then(() => chat());
     });
   }
@@ -141,8 +140,6 @@ function chat() {
     encryption.getMessages(
       connectedPeer.peer,
       await encryption.getPeerPublicKey(connectedPeer.peer),
-      await encryption.getPrivateKey(),
-      fingerprint,
     )
       .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
     connectedPeer.on('open', async () => transferKey(await encryption.getPublicKey()));
@@ -166,8 +163,6 @@ function chat() {
     encryption.getMessages(
       connectedPeer.peer,
       await encryption.getPeerPublicKey(connectedPeer.peer),
-      await encryption.getPrivateKey(),
-      fingerprint,
     )
       .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
     connectedPeer.on('open', async () => {
@@ -192,7 +187,6 @@ function chat() {
       data: await encryption.encrypt(
         message,
         await encryption.getPeerPublicKey(connectedPeer.peer),
-        await encryption.getPrivateKey(), fingerprint,
       ),
     });
     await receivedMessage(message, true);
@@ -220,12 +214,10 @@ function chat() {
       $('#messages')
         .append(`<span style="color: green">${message}</span><br>`);
     } else if (message.type === 'text') {
-      await encryption.storeMessage(connectedPeer.peer, message.data, fingerprint);
+      await encryption.storeMessage(connectedPeer.peer, message.data);
       await encryption.decrypt(
         message.data,
         await encryption.getPeerPublicKey(connectedPeer.peer),
-        await encryption.getPrivateKey(),
-        fingerprint,
       )
         .then(plaintext => $('#messages')
           .append(`<span>${plaintext}</span><br>`));

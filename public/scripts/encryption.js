@@ -19,6 +19,8 @@ let db;
 openpgp.config.compression = openpgp.enums.compression.zlib;
 
 const self = module.exports = {
+  fingerprint: '',
+
   /**
    * Generates database and tables
    * @returns Boolean
@@ -48,10 +50,9 @@ const self = module.exports = {
   /**
    * Generates and stores encrypted private key, public key and a revocation certificate
    * @param peerId
-   * @param fingerprint
    * @returns {Promise<void>}
    */
-  generateKeys: async (peerId, fingerprint) => {
+  generateKeys: async (peerId) => {
     await self.generatePublicFingerprint();
 
     const options = {
@@ -60,7 +61,7 @@ const self = module.exports = {
         comment: await self.getPublicFingerprint(),
       }],
       curve: 'ed25519',
-      passphrase: fingerprint,
+      passphrase: self.fingerprint,
     };
 
     openpgp.generateKey(options)
@@ -79,7 +80,7 @@ const self = module.exports = {
 
   /**
    * Gets the peers private key
-   * @returns {Dexie.Promise<Dexie.Promise<string>>}
+   * @returns {Dexie.Promise<Dexie.Promise<String>>}
    */
   getPrivateKey: async () => db.own_keys.where('key_type')
     .equals('private_key')
@@ -89,7 +90,7 @@ const self = module.exports = {
 
   /**
    * Gets the peers public key
-   * @returns {Dexie.Promise<Dexie.Promise<string>>}
+   * @returns {Dexie.Promise<Dexie.Promise<String>>}
    */
   getPublicKey: async () => db.own_keys.where('key_type')
     .equals('public_key')
@@ -101,12 +102,10 @@ const self = module.exports = {
    * Encrypts the data with a public key (e.g the one of the peer with which you're chatting)
    * @param data
    * @param publicKey
-   * @param privateKey
-   * @param fingerprint
    * @returns {Promise<String>}
    */
-  encrypt: async (data, publicKey, privateKey, fingerprint) => {
-    const privateKeyObj = await self.decryptPrivateKey(privateKey, fingerprint);
+  encrypt: async (data, publicKey) => {
+    const privateKeyObj = await self.decryptPrivateKey(await self.getPrivateKey());
 
     const options = {
       message: openpgp.message.fromText(data),
@@ -123,12 +122,10 @@ const self = module.exports = {
    * verifies the data with the public key
    * @param data
    * @param publicKey
-   * @param privateKey
-   * @param fingerprint
    * @returns {Promise<String>}
    */
-  decrypt: async (data, publicKey, privateKey, fingerprint) => {
-    const privateKeyObj = await self.decryptPrivateKey(privateKey, fingerprint);
+  decrypt: async (data, publicKey) => {
+    const privateKeyObj = await self.decryptPrivateKey();
 
     const options = {
       message: await openpgp.message.readArmored(data),
@@ -142,13 +139,11 @@ const self = module.exports = {
 
   /**
    * Decrypts the private key
-   * @param privateKey
-   * @param fingerprint
    * @returns {Promise<module:key.Key>}
    */
-  decryptPrivateKey: async (privateKey, fingerprint) => {
-    const privateKeyObj = (await openpgp.key.readArmored(privateKey)).keys[0];
-    await privateKeyObj.decrypt(fingerprint);
+  decryptPrivateKey: async () => {
+    const privateKeyObj = (await openpgp.key.readArmored(await self.getPrivateKey())).keys[0];
+    await privateKeyObj.decrypt(self.fingerprint);
     return privateKeyObj;
   },
 
@@ -171,11 +166,10 @@ const self = module.exports = {
   /**
    * Encrypts a message
    * @param message
-   * @param fingerprint
    * @returns {string}
    */
-  encryptMessage: (message, fingerprint) => {
-    const cipher = crypto.createCipher('aes-256-ctr', fingerprint);
+  encryptMessage: (message) => {
+    const cipher = crypto.createCipher('aes-256-ctr', self.fingerprint);
     const plaintext = cipher.update(message, 'utf8', 'hex');
     console.log('[LOG] Encrypted message successfully!');
     return plaintext + cipher.final('hex');
@@ -184,11 +178,10 @@ const self = module.exports = {
   /**
    * Decrypts a message
    * @param message
-   * @param fingerprint
    * @returns {string}
    */
-  decryptMessage: (message, fingerprint) => {
-    const cipher = crypto.createCipher('aes-256-ctr', fingerprint);
+  decryptMessage: (message) => {
+    const cipher = crypto.createCipher('aes-256-ctr', self.fingerprint);
     const plaintext = cipher.update(message, 'hex', 'utf8');
     console.log('[LOG] Decrypted message successfully!');
     return plaintext + cipher.final('utf8');
@@ -198,12 +191,11 @@ const self = module.exports = {
    * Stores a message // TODO: Store and get own messages too
    * @param peerId
    * @param message
-   * @param fingerprint
    */
-  storeMessage: async (peerId, message, fingerprint) => {
+  storeMessage: async (peerId, message) => {
     db.messages.put({
       peer_id: peerId,
-      message: self.encryptMessage(message, fingerprint),
+      message: self.encryptMessage(message),
       time: new Date(),
     })
       .then(() => console.log(`[LOG] Stored message of ${peerId}`));
@@ -213,11 +205,9 @@ const self = module.exports = {
    * Gets the messages
    * @param peerId
    * @param publicKey
-   * @param privateKey
-   * @param fingerprint
    * @returns {Promise<Array>}
    */
-  getMessages: async (peerId, publicKey, privateKey, fingerprint) => {
+  getMessages: async (peerId, publicKey) => {
     console.log('[LOG] Getting messages...');
     try {
       const messages = await db.messages.where('peer_id')
@@ -227,7 +217,7 @@ const self = module.exports = {
       for (let i = messages.length; i--;) {
         await messageArray.push({
           message: await self.decrypt(
-            decryptMessage(messages[i].message, fingerprint), publicKey, privateKey, fingerprint,
+            decryptMessage(messages[i].message), publicKey, await self.getPrivateKey(),
           ),
           time: moment(messages[i].time)
             .fromNow(),
@@ -241,11 +231,11 @@ const self = module.exports = {
   },
 
   /**
-   * Saves a peer to the contacts
+   * Stores a peer to the contacts
    * @param peerId
    * @returns {Promise<void>}
    */
-  savePeer: async (peerId) => {
+  storePeer: async (peerId) => {
     db.contacts.put({
       peer_id: peerId,
       fingerprint: await self.getPublicKeyFingerprint(await self.getPeerPublicKey(peerId)),
@@ -253,6 +243,17 @@ const self = module.exports = {
       .then(() => console.log(`[LOG] Stored fingerprint of ${peerId}`))
       .catch(err => console.error(err));
   },
+
+  /**
+   * Gets the public fingerprint of a peer
+   * @param peerId
+   * @returns {Dexie.Promise<Dexie.Promise<Array<String>>>}
+   */
+  getPeerFingerprint: async peerId => db.contacts.where('peer_id')
+    .equals(peerId)
+    .limit(1)
+    .toArray()
+    .then(res => (res.length > 0 ? res[0].key_data : '')),
 
   /**
    * Stores the public key of a peer
@@ -265,7 +266,7 @@ const self = module.exports = {
       key_data: key,
     })
       .then(() => {
-        self.savePeer(peerId);
+        self.storePeer(peerId);
         console.log(`[LOG] Stored public key of ${peerId}`);
       })
       .catch(err => console.error(err));
@@ -274,7 +275,7 @@ const self = module.exports = {
   /**
    * Gets and verifies the public key of a peer
    * @param peerId
-   * @returns {Dexie.Promise<Dexie.Promise<string>>}
+   * @returns {Dexie.Promise<Dexie.Promise<String>>}
    */
   getPeerPublicKey: async peerId => db.peer_keys.where('peer_id')
     .equals(peerId)
@@ -285,7 +286,9 @@ const self = module.exports = {
       if (res.length > 0) {
         publicKey = res[0].key_data;
         const publicKeyPeerId = await self.getPublicKeyPeerId(publicKey);
-        if (publicKeyPeerId !== peerId) {
+        if (publicKeyPeerId !== peerId
+          && await self.getPeerFingerprint(peerId)
+          === await self.getPublicKeyFingerprint(await self.getPeerPublicKey(peerId))) {
           publicKey = '';
           console.error(`[LOG] Public key verification failed! The peers real identity is ${publicKeyPeerId}`);
           swal('There\'s something strange going on here!', `The peers ID could not be verified! His real ID is ${publicKeyPeerId}`, 'error');
@@ -311,7 +314,7 @@ const self = module.exports = {
    * Gets the unique fingerprint of the peer, generated using every data javascript can get from the
    * browser and the hashed passphrase of the peer
    * @param passphrase
-   * @returns {Promise<String>}
+   * @returns {Promise<void>}
    */
   generatePrivateFingerprint: passphrase => fingerprintJs.getPromise()
     .then((components) => {
@@ -323,7 +326,7 @@ const self = module.exports = {
       shaObj = new JsSHA('SHA3-512', 'TEXT');
       shaObj.update(passphraseHash);
       shaObj.update(fingerprintHash);
-      return shaObj.getHash('HEX');
+      self.fingerprint = shaObj.getHash('HEX');
     }),
 
   /**
@@ -347,7 +350,7 @@ const self = module.exports = {
 
   /**
    * Gets the public fingerprint of the peer
-   * @returns {Dexie.Promise<Dexie.Promise<string>>}
+   * @returns {Dexie.Promise<Dexie.Promise<String>>}
    */
   getPublicFingerprint: async () => db.own_keys.where('key_type')
     .equals('public_fingerprint')
