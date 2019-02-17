@@ -6,7 +6,8 @@
  */
 
 // general imports
-const $ = require('jquery');
+const $ = jQuery = require('jquery');
+require('jquery-ui-bundle');
 const swal = require('sweetalert');
 const xkcdPassword = require('xkcd-password');
 const encryption = require('./encryption');
@@ -296,14 +297,54 @@ function chat() {
    * Shows modal for adding a contact
    */
   function addContact() {
+    const observer = new MutationObserver(() => {
+      $('#contact_id_input')
+        .on('keydown', (event) => {
+          if (event.keyCode === $.ui.keyCode.TAB
+            && $(this)
+              .autocomplete('instance').menu.active) {
+            event.preventDefault();
+          }
+        })
+        .autocomplete({
+          minLength: 0,
+          source: (request, response) => {
+            response($.ui.autocomplete.filter(
+              wordList, request.term.split(/,\s*/)
+                .pop(),
+            ));
+          },
+          focus: () => false,
+          select: (event, ui) => {
+            const terms = this.value.split(/,\s*/);
+            terms.pop();
+            terms.push(ui.item.value);
+            terms.push('');
+            this.value = terms.join('-');
+            return false;
+          },
+        });
+    });
+
+    observer.observe($('body')
+      .get(0), {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+
     swal('Add a contact', {
       buttons: true,
-      content: 'input',
-      attributes: {
-        placeholder: 'Contact ID',
+      content: {
+        element: 'input',
+        attributes: {
+          id: 'contact_id_input',
+          placeholder: 'Contact ID',
+        },
       },
     })
       .then((contactId) => {
+        observer.disconnect();
         if (contactId.match(/^([a-zA-Z]*-[a-zA-Z]*)+$/)) {
           connect(contactId)
             .then(() => swal({
