@@ -55,7 +55,7 @@ async function evaluateKeyGeneration() {
           throw 'Not verified!';
         }
         await encryption.generatePrivateFingerprint(pin);
-        await encryption.decryptPrivateKey();
+        await encryption.decryptPrivateKey(); // try decrypting
         chat();
       } catch (err) { // decrypting failed
         if (tryCount === 3) {

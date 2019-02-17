@@ -311,15 +311,22 @@ const self = module.exports = {
     .then(obj => obj.user.userId.userid.replace(/ \((.+?)\)/g, '')) || '',
 
   /**
-   * Gets the unique fingerprint of the peer, generated using every data javascript can get from the
+   * Generates the unique fingerprint of the peer using every data javascript can get
+   * from the
    * browser and the hashed passphrase of the peer
    * @param passphrase
    * @returns {Promise<void>}
    */
-  generatePrivateFingerprint: passphrase => fingerprintJs.getPromise()
-    .then((components) => {
+  generatePrivateFingerprint: passphrase => fingerprintJs.getPromise({
+    excludes: {
+      screenResolution: true,
+      availableScreenResolution: true,
+    },
+  })
+    .then(async (components) => {
       const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
+      console.log(fingerprintHash);
       let shaObj = new JsSHA('SHA3-512', 'TEXT');
       shaObj.update(passphrase);
       const passphraseHash = shaObj.getHash('HEX');
@@ -330,11 +337,16 @@ const self = module.exports = {
     }),
 
   /**
-   * Gets the unique fingerprint of the peer, generated using every data javascript can get from the
+   * Generates the unique fingerprint of the peer using every data javascript can get from the
    * browser and a randomly generated string
    * @returns {Promise<void>}
    */
-  generatePublicFingerprint: () => fingerprintJs.getPromise()
+  generatePublicFingerprint: () => fingerprintJs.getPromise({
+    excludes: {
+      screenResolution: true,
+      availableScreenResolution: true,
+    },
+  })
     .then(async (components) => {
       const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
