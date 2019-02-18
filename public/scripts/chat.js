@@ -295,32 +295,41 @@ function chat() {
 
   /**
    * Shows modal for adding a contact
+   * TODO: Fix selecting from dropdown on enter
    */
   function addContact() {
+    let idComplete = false;
     const observer = new MutationObserver(() => {
       $('#contact_id_input')
         .on('keydown', (event) => {
-          if (event.keyCode === $.ui.keyCode.TAB
-            && $(this)
-              .autocomplete('instance').menu.active) {
+          if (event.keyCode === $.ui.keyCode.TAB) {
+            event.preventDefault();
+          } else if (!idComplete && event.keyCode === $.ui.keyCode.ENTER) {
             event.preventDefault();
           }
         })
         .autocomplete({
-          minLength: 0,
-          source: (request, response) => {
+          minLength: 1,
+          source(request, response) {
             response($.ui.autocomplete.filter(
-              wordList, request.term.split(/,\s*/)
+              wordList, request.term.split(/-\s*/)
                 .pop(),
             ));
           },
-          focus: () => false,
-          select: (event, ui) => {
-            const terms = this.value.split(/,\s*/);
-            terms.pop();
-            terms.push(ui.item.value);
-            terms.push('');
-            this.value = terms.join('-');
+          focus() {
+            return false;
+          },
+          select(event, ui) {
+            const words = this.value.split(/-\s*/);
+            words.pop();
+            if (words.length !== 3) {
+              words.push(ui.item.value);
+              words.push('');
+              this.value = words.join('-');
+            } else {
+              this.value = `${words.join('-')}-${ui.item.value}`;
+              idComplete = true;
+            }
             return false;
           },
         });
