@@ -125,6 +125,8 @@ function chat() {
       swal('Peer could not be found!', '', 'error');
     } else if (err.type === 'unavailable-id') {
       swal('Ou snap! Your ID isn\'t available!', '', 'error');
+    } else if (err.type === 'disconnected') {
+      swal('Not connected to the server!', 'Please reconnect using the anonymize button.', 'error');
     } else {
       swal('Unhandled Error!', `You just threw up this error: ${err.type}`, 'error');
     }
@@ -170,8 +172,8 @@ function chat() {
           conn.send({
             type: 'state',
             data: 'declined',
-          });
-          conn.close();
+          })
+            .then(() => conn.close());
         }
       });
   });
@@ -185,9 +187,10 @@ function chat() {
     const connectionId = (await generator.generate()).join('-');
     console.log('[LOG] Connecting to', id);
     console.log('[LOG] Your connection ID is', connectionId);
-    connectedPeer = peer.connect(id, { label: connectionId });
-    connectedPeer.on('data', async (data) => {
+    const conn = peer.connect(id, { label: connectionId });
+    conn.on('data', async (data) => {
       if (data.type === 'state' && data.data === 'accepted') {
+        connectedPeer = conn;
         connectedPeer.send({
           type: 'state',
           data: 'received',
@@ -204,7 +207,8 @@ function chat() {
           swal('Disconnected!', `The connection to "${connectedPeer.peer}" has been closed!`, 'error');
         });
       } else if (data.type === 'state') {
-        swal('Declined!', `The user "${connectedPeer.peer}" has declined your connection request.`, 'error');
+        swal('Declined!', `The user "${conn.peer}" has declined your connection request.`, 'error');
+        conn.close();
       } else {
         console.log('[LOG] Received new message!');
         await receivedMessage(data);
@@ -218,15 +222,20 @@ function chat() {
    * @returns {Promise<void>}
    */
   async function sendMessage(message) {
-    console.log(`[LOG] Sending message '${message}' to ${connectedPeer.peer}`);
-    connectedPeer.send({
-      type: 'text',
-      data: await encryption.encrypt(
-        message,
-        await encryption.getPeerPublicKey(connectedPeer.peer),
-      ),
-    });
-    await receivedMessage(message, true);
+    try {
+      console.log(`[LOG] Sending message '${message}' to ${connectedPeer.peer}`);
+      connectedPeer.send({
+        type: 'text',
+        data: await encryption.encrypt(
+          message,
+          await encryption.getPeerPublicKey(connectedPeer.peer),
+        ),
+      });
+      await receivedMessage(message, true);
+    } catch (err) {
+      console.error(err);
+      swal('Not connected!', 'You aren\'t connected to another peer right now.', 'error');
+    }
   }
 
   /**
