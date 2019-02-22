@@ -8,8 +8,10 @@
 // general imports
 const $ = jQuery = require('jquery');
 require('jquery-ui-bundle');
+const util = require('util');
 const swal = require('sweetalert');
 const xkcdPassword = require('xkcd-password');
+const dragDrop = require('drag-drop');
 const encryption = require('./encryption');
 const wordList = require('./wordlist');
 const pinInput = require('./input_pin');
@@ -94,6 +96,9 @@ function chat() {
   $('#chat')
     .fadeIn();
 
+  // init file sending support
+  initFileSending();
+
   // start the peer
   const peer = new Peer(peerId, {
     host,
@@ -172,8 +177,8 @@ function chat() {
           conn.send({
             type: 'state',
             data: 'declined',
-          })
-            .then(() => conn.close());
+          });
+          // .then(() => conn.close()); TODO: Add promise for connection closing
         }
       });
   });
@@ -267,6 +272,8 @@ function chat() {
       )
         .then(plaintext => $('#messages')
           .append(`<span>${plaintext}</span><br>`));
+    } else if (message.type === 'file') {
+      processFile(message);
     } else if (message.type === 'key') {
       await encryption.storePeerPublicKey(connectedPeer.peer, message.data);
     }
@@ -274,11 +281,41 @@ function chat() {
 
   /**
    * Sends a message of the text input field
-   * @returns {Promise<String>}
+   * @returns {Promise<void>}
    */
   async function sendMessageFromInput() {
     const messageInput = $('#message');
-    return await sendMessage(messageInput.val()) & messageInput.val('');
+    await sendMessage(messageInput.val());
+    messageInput.val('');
+  }
+
+  /**
+   * Initialized the file sending feature
+   */
+  function initFileSending() {
+    dragDrop('body', (files) => {
+      files.forEach(async (file) => {
+        connectedPeer.send({
+          type: 'file',
+          info: {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+          },
+          data: file,
+        });
+        console.log('[LOG] File sent!'); // TODO: Make it async!
+      });
+    });
+  }
+
+  /**
+   * Processes a received/sent file
+   * @param file
+   */
+  function processFile(file) {
+    console.log(file.info);
+    // TODO: Show file in chat with preview and icon
   }
 
   /**
@@ -384,7 +421,7 @@ function chat() {
   $(document)
     .ready(() => {
       $('#send_message')
-        .on('click', async () => await sendMessageFromInput());
+        .on('click', async () => sendMessageFromInput());
       $('#message')
         .on('keydown', async (e) => {
           if (e.key === 'Enter') await sendMessageFromInput();
