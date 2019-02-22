@@ -130,6 +130,7 @@ function chat() {
     }
   });
 
+  // This event gets fired when the initiator wants to connect to the peer
   peer.on('connection', (conn) => {
     swal({
       title: 'Connection request',
@@ -145,8 +146,8 @@ function chat() {
             type: 'state',
             data: 'accepted',
           });
-          connectedPeer.on('data', async (state) => {
-            if (state.data === 'received') {
+          connectedPeer.on('data', async (data) => {
+            if (data.type === 'state' && data.data === 'received') {
               console.log('[LOG] Connected to', connectedPeer.peer);
               swal(
                 'New connection!',
@@ -157,12 +158,11 @@ function chat() {
                 connectedPeer.peer,
                 await encryption.getPeerPublicKey(connectedPeer.peer),
               )
-                .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
-              connectedPeer.on('open', async () => transferKey(await encryption.getPublicKey()));
-              connectedPeer.on('data', async (message) => {
-                console.log('[LOG] Received new message!');
-                await receivedMessage(message);
-              });
+                .then(messages => messages.forEach(async messageData => receivedMessage(`${messageData.message} - ${messageData.time}`, true)));
+              transferKey(await encryption.getPublicKey());
+            } else if (data.type !== 'state') {
+              console.log('[LOG] Received new message!');
+              await receivedMessage(data);
             }
           });
         } else {
@@ -177,7 +177,7 @@ function chat() {
   });
 
   /**
-   * Connects to a peer via his id
+   * Connects the initiator to a peer via his id
    * @param id
    * @returns {Promise<void>}
    */
@@ -186,8 +186,8 @@ function chat() {
     console.log('[LOG] Connecting to', id);
     console.log('[LOG] Your connection ID is', connectionId);
     connectedPeer = peer.connect(id, { label: connectionId });
-    connectedPeer.on('data', async (state) => {
-      if (state.type === 'state' && state.data === 'accepted') {
+    connectedPeer.on('data', async (data) => {
+      if (data.type === 'state' && data.data === 'accepted') {
         connectedPeer.send({
           type: 'state',
           data: 'received',
@@ -199,16 +199,15 @@ function chat() {
           connectedPeer.peer,
           await encryption.getPeerPublicKey(connectedPeer.peer),
         )
-          .then(messages => messages.forEach(async data => await receivedMessage(`${data.message} - ${data.time}`, true)));
-        connectedPeer.on('data', async (message) => {
-          console.log('[LOG] Received new message!');
-          await receivedMessage(message);
-        });
+          .then(messages => messages.forEach(async messageData => receivedMessage(`${messageData.message} - ${messageData.time}`, true)));
         connectedPeer.on('close', () => {
           swal('Disconnected!', `The connection to "${connectedPeer.peer}" has been closed!`, 'error');
         });
-      } else if (state.type === 'state') {
+      } else if (data.type === 'state') {
         swal('Declined!', `The user "${connectedPeer.peer}" has declined your connection request.`, 'error');
+      } else {
+        console.log('[LOG] Received new message!');
+        await receivedMessage(data);
       }
     });
   }
