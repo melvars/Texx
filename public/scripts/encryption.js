@@ -31,7 +31,7 @@ const self = module.exports = {
       .stores({
         own_keys: '&key_type, key_data',
         peer_keys: 'peer_id, key_data',
-        messages: '++id, peer_id, message, time',
+        messages: '++id, peer_id, message, time, self',
         contacts: 'peer_id, fingerprint',
       });
 
@@ -105,7 +105,7 @@ const self = module.exports = {
    * @returns {Promise<String>}
    */
   encrypt: async (data, publicKey) => {
-    const privateKeyObj = await self.decryptPrivateKey(await self.getPrivateKey());
+    const privateKeyObj = await self.decryptPrivateKey();
 
     const options = {
       message: openpgp.message.fromText(data),
@@ -170,9 +170,9 @@ const self = module.exports = {
    */
   encryptMessage: (message) => {
     const cipher = crypto.createCipher('aes-256-ctr', self.fingerprint);
-    const plaintext = cipher.update(message, 'utf8', 'hex');
+    const encrypted = cipher.update(message, 'utf8', 'hex');
     console.log('[LOG] Encrypted message successfully!');
-    return plaintext + cipher.final('hex');
+    return encrypted;
   },
 
   /**
@@ -184,25 +184,27 @@ const self = module.exports = {
     const cipher = crypto.createCipher('aes-256-ctr', self.fingerprint);
     const plaintext = cipher.update(message, 'hex', 'utf8');
     console.log('[LOG] Decrypted message successfully!');
-    return plaintext + cipher.final('utf8');
+    return plaintext;
   },
 
   /**
-   * Stores a message // TODO: Store and get own messages too
+   * Stores a message
    * @param peerId
    * @param message
+   * @param isSelf
    */
-  storeMessage: async (peerId, message) => {
+  storeMessage: async (peerId, message, isSelf = false) => {
     db.messages.put({
       peer_id: peerId,
       message: self.encryptMessage(message),
       time: new Date(),
+      self: isSelf,
     })
       .then(() => console.log(`[LOG] Stored message of ${peerId}`));
   },
 
   /**
-   * Gets the messages
+   * Gets the messages with a peer
    * @param peerId
    * @param publicKey
    * @returns {Promise<Array>}
@@ -213,18 +215,30 @@ const self = module.exports = {
       const messages = await db.messages.where('peer_id')
         .equals(peerId)
         .sortBy('id');
+      console.log(messages);
+      console.log(self.decryptMessage(messages[0].message));
       const messageArray = [];
       for (let i = messages.length; i--;) {
-        await messageArray.push({
-          message: await self.decrypt(
-            decryptMessage(messages[i].message), publicKey, await self.getPrivateKey(),
-          ),
+        let plainTextMessage;
+        if (messages[i].self) {
+          plainTextMessage = self.decryptMessage(messages[i].message);
+        } else {
+          plainTextMessage = await self.decrypt(
+            self.decryptMessage(messages[i].message),
+            publicKey,
+          );
+        }
+        messageArray.push({
+          type: 'decrypted',
+          self: messages[i].self,
+          message: plainTextMessage,
           time: moment(messages[i].time)
             .fromNow(),
         });
       }
       return messageArray;
     } catch (err) {
+      console.error(err);
       console.log('[LOG] No messages found!');
       return [];
     }

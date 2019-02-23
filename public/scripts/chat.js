@@ -165,7 +165,9 @@ function chat() {
                 connectedPeer.peer,
                 await encryption.getPeerPublicKey(connectedPeer.peer),
               )
-                .then(messages => messages.forEach(async messageData => receivedMessage(`${messageData.message} - ${messageData.time}`, true)));
+                .then(messages => messages.forEach(async (messageData) => {
+                  await receivedMessage(messageData);
+                }));
               transferKey(await encryption.getPublicKey());
             } else if (data.type !== 'state') {
               console.log('[LOG] Received new message!');
@@ -207,7 +209,9 @@ function chat() {
           connectedPeer.peer,
           await encryption.getPeerPublicKey(connectedPeer.peer),
         )
-          .then(messages => messages.forEach(async messageData => receivedMessage(`${messageData.message} - ${messageData.time}`, true)));
+          .then(messages => messages.forEach(async (messageData) => {
+            await receivedMessage(messageData);
+          }));
         connectedPeer.on('close', () => {
           swal('Disconnected!', `The connection to "${connectedPeer.peer}" has been closed!`, 'error');
         });
@@ -264,6 +268,7 @@ function chat() {
     if (self) {
       $('#messages')
         .append(`<span style="color: green">${message}</span><br>`);
+      await encryption.storeMessage(connectedPeer.peer, message, true);
     } else if (message.type === 'text') {
       await encryption.storeMessage(connectedPeer.peer, message.data);
       await encryption.decrypt(
@@ -272,10 +277,20 @@ function chat() {
       )
         .then(plaintext => $('#messages')
           .append(`<span>${plaintext}</span><br>`));
+    } else if (message.type === 'decrypted') {
+      if (message.self) {
+        $('#messages')
+          .append(`<span style="color: green">${message.message} - ${message.time}</span><br>`);
+      } else {
+        $('#messages')
+          .append(`<span>${message.message} - ${message.time}</span><br>`);
+      }
     } else if (message.type === 'file') {
       processFile(message);
     } else if (message.type === 'key') {
       await encryption.storePeerPublicKey(connectedPeer.peer, message.data);
+    } else {
+      console.error('Received unsupported message!');
     }
   }
 
