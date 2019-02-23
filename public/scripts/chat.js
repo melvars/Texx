@@ -286,7 +286,7 @@ function chat() {
           .append(`<span>${message.message} - ${message.time}</span><br>`);
       }
     } else if (message.type === 'file') {
-      processFile(message);
+      await processFile(message);
     } else if (message.type === 'key') {
       await encryption.storePeerPublicKey(connectedPeer.peer, message.data);
     } else {
@@ -306,31 +306,56 @@ function chat() {
 
   /**
    * Initialized the file sending feature
+   * TODO: Encrypt files
    */
   function initFileSending() {
     dragDrop('body', (files) => {
-      files.forEach(async (file) => {
-        connectedPeer.send({
-          type: 'file',
-          info: {
-            name: file.name,
-            size: file.size,
-            type: file.type,
-          },
-          data: file,
+      if (connectedPeer !== undefined) {
+        files.forEach(async (file) => {
+          const fileObj = {
+            type: 'file',
+            info: {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+            },
+            data: file,
+          };
+          await processFile(fileObj, true);
+          connectedPeer.send(fileObj);
+          console.log('[LOG] File sent!'); // TODO: Make it async!
         });
-        console.log('[LOG] File sent!'); // TODO: Make it async!
-      });
+      }
     });
   }
 
   /**
    * Processes a received/sent file
    * @param file
+   * @param self
    */
-  function processFile(file) {
+  async function processFile(file, self = false) {
     console.log(file.info);
-    // TODO: Show file in chat with preview and icon
+    const blob = new Blob([file.data], { type: file.info.type });
+    const blobUrl = URL.createObjectURL(blob);
+    const fileName = `${file.info.name} (${formatBytes(file.info.size)})`;
+    // REMEMBER: Use 'self' instead of 'true' when encrypting files! => TODO: Fix 'self' in files
+    await encryption.storeMessage(connectedPeer.peer, fileName, true); // TODO: Store files
+    $('#messages')
+      .append(`<a href="${blobUrl}" download="${file.info.name}">${fileName}</a><br>`);
+    // TODO: Show file preview
+  }
+
+  /**
+   * Formats bytes to a human readable string
+   * @param bytes
+   * @returns {string}
+   */
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${parseFloat((bytes / (1024 ** i)).toFixed(2))} ${sizes[i]}`;
   }
 
   /**

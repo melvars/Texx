@@ -214,9 +214,8 @@ const self = module.exports = {
     try {
       const messages = await db.messages.where('peer_id')
         .equals(peerId)
+        .reverse()
         .sortBy('id');
-      console.log(messages);
-      console.log(self.decryptMessage(messages[0].message));
       const messageArray = [];
       for (let i = messages.length; i--;) {
         let plainTextMessage;
@@ -326,8 +325,7 @@ const self = module.exports = {
 
   /**
    * Generates the unique fingerprint of the peer using every data javascript can get
-   * from the
-   * browser and the hashed passphrase of the peer
+   * from the browser and the hashed passphrase of the peer
    * @param passphrase
    * @returns {Promise<void>}
    */
@@ -338,6 +336,8 @@ const self = module.exports = {
     },
   })
     .then(async (components) => {
+      localStorage.setItem(Date.now()
+        .toString(), components);
       const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
       console.log(`[LOG] Your fingerprint is: ${fingerprintHash}`);
