@@ -20,8 +20,8 @@ const pinInput = require('./input_pin');
 const host = 'meta.marvinborner.de';
 let peerId;
 let call;
-let connectedPeer;
-const connectedPeers = []; // TODO: Save new peers in array
+let currentPeerIndex; // defines which peer connection is currently used
+const connectedPeers = [];
 
 // setup generator
 const generator = new xkcdPassword();
@@ -148,22 +148,23 @@ function chat() {
     })
       .then(async (accepted) => {
         if (accepted) {
-          connectedPeer = conn;
-          connectedPeer.send({
+          currentPeerIndex = connectedPeers.length + 1;
+          connectedPeers[currentPeerIndex] = conn;
+          connectedPeers[currentPeerIndex].send({
             type: 'state',
             data: 'accepted',
           });
-          connectedPeer.on('data', async (data) => {
+          connectedPeers[currentPeerIndex].on('data', async (data) => {
             if (data.type === 'state' && data.data === 'received') {
-              console.log('[LOG] Connected to', connectedPeer.peer);
+              console.log('[LOG] Connected to', connectedPeers[currentPeerIndex].peer);
               swal(
                 'New connection!',
-                `You have successfully connected to the user "${connectedPeer.peer}"!`,
+                `You have successfully connected to the user "${connectedPeers[currentPeerIndex].peer}"!`,
                 'success',
               );
               encryption.getMessages(
-                connectedPeer.peer,
-                await encryption.getPeerPublicKey(connectedPeer.peer),
+                connectedPeers[currentPeerIndex].peer,
+                await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
               )
                 .then(messages => messages.forEach(async (messageData) => {
                   await receivedMessage(messageData);
@@ -197,23 +198,24 @@ function chat() {
     const conn = peer.connect(id, { label: connectionId });
     conn.on('data', async (data) => {
       if (data.type === 'state' && data.data === 'accepted') {
-        connectedPeer = conn;
-        connectedPeer.send({
+        currentPeerIndex = connectedPeers.length + 1;
+        connectedPeers[currentPeerIndex] = conn;
+        connectedPeers[currentPeerIndex].send({
           type: 'state',
           data: 'received',
         });
-        console.log('[LOG] Connected to', connectedPeer.peer);
-        swal(`Successfully connected to "${connectedPeer.peer}"!`, '', 'success');
+        console.log('[LOG] Connected to', connectedPeers[currentPeerIndex].peer);
+        swal(`Successfully connected to "${connectedPeers[currentPeerIndex].peer}"!`, '', 'success');
         transferKey(await encryption.getPublicKey());
         encryption.getMessages(
-          connectedPeer.peer,
-          await encryption.getPeerPublicKey(connectedPeer.peer),
+          connectedPeers[currentPeerIndex].peer,
+          await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
         )
           .then(messages => messages.forEach(async (messageData) => {
             await receivedMessage(messageData);
           }));
-        connectedPeer.on('close', () => {
-          swal('Disconnected!', `The connection to "${connectedPeer.peer}" has been closed!`, 'error');
+        connectedPeers[currentPeerIndex].on('close', () => {
+          swal('Disconnected!', `The connection to "${connectedPeers[currentPeerIndex].peer}" has been closed!`, 'error');
         });
       } else if (data.type === 'state') {
         swal('Declined!', `The user "${conn.peer}" has declined your connection request.`, 'error');
@@ -232,12 +234,12 @@ function chat() {
    */
   async function sendMessage(message) {
     try {
-      console.log(`[LOG] Sending message '${message}' to ${connectedPeer.peer}`);
-      connectedPeer.send({
+      console.log(`[LOG] Sending message '${message}' to ${connectedPeers[currentPeerIndex].peer}`);
+      connectedPeers[currentPeerIndex].send({
         type: 'text',
         data: await encryption.encrypt(
           message,
-          await encryption.getPeerPublicKey(connectedPeer.peer),
+          await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
         ),
       });
       await receivedMessage(message, true);
@@ -252,8 +254,8 @@ function chat() {
    * @param key
    */
   function transferKey(key) {
-    console.log(`[LOG] Transferring key to ${connectedPeer.peer}`);
-    connectedPeer.send({
+    console.log(`[LOG] Transferring key to ${connectedPeers[currentPeerIndex].peer}`);
+    connectedPeers[currentPeerIndex].send({
       type: 'key',
       data: key,
     });
@@ -268,12 +270,12 @@ function chat() {
     if (self) {
       $('#messages')
         .append(`<span style="color: green">${message}</span><br>`);
-      await encryption.storeMessage(connectedPeer.peer, message, true);
+      await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, message, true);
     } else if (message.type === 'text') {
-      await encryption.storeMessage(connectedPeer.peer, message.data);
+      await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, message.data);
       await encryption.decrypt(
         message.data,
-        await encryption.getPeerPublicKey(connectedPeer.peer),
+        await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
       )
         .then(plaintext => $('#messages')
           .append(`<span>${plaintext}</span><br>`));
@@ -288,7 +290,7 @@ function chat() {
     } else if (message.type === 'file') {
       await processFile(message);
     } else if (message.type === 'key') {
-      await encryption.storePeerPublicKey(connectedPeer.peer, message.data);
+      await encryption.storePeerPublicKey(connectedPeers[currentPeerIndex].peer, message.data);
     } else {
       console.error('Received unsupported message!');
     }
@@ -310,7 +312,7 @@ function chat() {
    */
   function initFileSending() {
     dragDrop('body', (files) => {
-      if (connectedPeer !== undefined) {
+      if (connectedPeers[currentPeerIndex] !== undefined) {
         files.forEach(async (file) => {
           const fileObj = {
             type: 'file',
@@ -322,7 +324,7 @@ function chat() {
             data: file,
           };
           await processFile(fileObj, true);
-          connectedPeer.send(fileObj);
+          connectedPeers[currentPeerIndex].send(fileObj);
           console.log('[LOG] File sent!'); // TODO: Make it async!
         });
       }
@@ -340,7 +342,7 @@ function chat() {
     const blobUrl = URL.createObjectURL(blob);
     const fileName = `${file.info.name} (${formatBytes(file.info.size)})`;
     // REMEMBER: Use 'self' instead of 'true' when encrypting files! => TODO: Fix 'self' in files
-    await encryption.storeMessage(connectedPeer.peer, fileName, true); // TODO: Store files
+    await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, fileName, true); // TODO: Store files
     $('#messages')
       .append(`<a href="${blobUrl}" download="${file.info.name}">${fileName}</a><br>`);
     // TODO: Show file preview
