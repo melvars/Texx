@@ -345,7 +345,6 @@ const self = module.exports = {
     .then(async (components) => {
       const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
-      console.log(`[LOG] Your fingerprint is: ${fingerprintHash}`);
       let shaObj = new JsSHA('SHA3-512', 'TEXT');
       shaObj.update(passphrase);
       const passphraseHash = shaObj.getHash('HEX');
@@ -370,6 +369,7 @@ const self = module.exports = {
     .then(async (components) => {
       const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
+      console.log(`[LOG] Your fingerprint is: ${fingerprintHash}`);
       const shaObj = new JsSHA('SHA3-512', 'TEXT');
       shaObj.update(fingerprintHash);
       shaObj.update(Math.random()
