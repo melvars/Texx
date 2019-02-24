@@ -249,13 +249,19 @@ const self = module.exports = {
    * @returns {Promise<void>}
    */
   storePeer: async (peerId) => {
-    db.contacts.put({
+    await db.contacts.put({
       peer_id: peerId,
       fingerprint: await self.getPublicKeyFingerprint(await self.getPeerPublicKey(peerId)),
     })
       .then(() => console.log(`[LOG] Stored fingerprint of ${peerId}`))
       .catch(err => console.error(err));
   },
+
+  /**
+   * Gets every stored peer
+   * @returns {Promise<Array>}
+   */
+  getStoredPeers: async () => db.contacts.toArray(),
 
   /**
    * Gets the public fingerprint of a peer
@@ -274,12 +280,12 @@ const self = module.exports = {
    * @param key
    */
   storePeerPublicKey: async (peerId, key) => {
-    db.peer_keys.put({
+    await db.peer_keys.put({
       peer_id: peerId,
       key_data: key,
     })
-      .then(() => {
-        self.storePeer(peerId);
+      .then(async () => {
+        await self.storePeer(peerId);
         console.log(`[LOG] Stored public key of ${peerId}`);
       })
       .catch(err => console.error(err));

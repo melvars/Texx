@@ -111,7 +111,8 @@ function chat() {
   // Peer events
   peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept
 
-  peer.on('open', (id) => {
+  peer.on('open', async (id) => {
+    await refreshContactList();
     console.log('[LOG] Your ID is', id);
     swal(
       'Hello world!',
@@ -214,7 +215,8 @@ function chat() {
           .then(messages => messages.forEach(async (messageData) => {
             await receivedMessage(messageData);
           }));
-        connectedPeers[currentPeerIndex].on('close', () => {
+        connectedPeers[currentPeerIndex].on('close', async () => {
+          await refreshContactList();
           swal('Disconnected!', `The connection to "${connectedPeers[currentPeerIndex].peer}" has been closed!`, 'error');
         });
       } else if (data.type === 'state') {
@@ -290,7 +292,8 @@ function chat() {
     } else if (message.type === 'file') {
       await processFile(message);
     } else if (message.type === 'key') {
-      await encryption.storePeerPublicKey(connectedPeers[currentPeerIndex].peer, message.data);
+      encryption.storePeerPublicKey(connectedPeers[currentPeerIndex].peer, message.data)
+        .then(() => refreshContactList());
     } else {
       console.error('Received unsupported message!');
     }
@@ -380,12 +383,35 @@ function chat() {
       });
   }
 
-  function addContactToList(contactId) {
-    $('#contact_list')
-      .append(`<column><button class="button action-button is-big is-outlined is-white is-centered" id="peer_${contactId}"><i class="fas fa-user"></i></button></column>`);
+  /**
+   * Refreshes the contact list at the left side of the chat
+   * @returns {Promise<void>}
+   */
+  async function refreshContactList() {
+    try {
+      (await encryption.getStoredPeers()).forEach((peerObj) => {
+        if (!$(`[data-peer="${peerObj.peer_id}"]`).length) { // Contact isn't already there
+          $('#contact_list')
+            .append(`
+            <column>
+                <button
+                    class="button action-button is-big is-outlined is-white" 
+                    data-peer="${peerObj.peer_id}">
+                    <i class="fas fa-user"></i>
+                </button>
+            </column>
+        `);
+        }
+      });
+      $('[data-peer]')
+        .removeClass('is-success');
+      $(`[data-peer="${connectedPeers[currentPeerIndex].peer}"]`)
+        .addClass('is-success');
+    } catch (err) {
+      console.error('You don\'t have any friends (yet).');
+    }
+    console.log('[LOG] Refreshed contact list');
   }
-
-  addContactToList('TEST');
 
   /**
    * Shows modal for adding a contact
@@ -480,7 +506,10 @@ function chat() {
       $('#add_contact')
         .on('click', () => addContact());
       $('#logout')
-        .on('click', () => location.reload(true));
+        .on('click', () => {
+          connectedPeers[currentPeerIndex].close();
+          location.reload(true);
+        });
       $('#delete')
         .on('click', () => deleteAccount());
       $('#anonymize')
