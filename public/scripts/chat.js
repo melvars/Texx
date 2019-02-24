@@ -380,6 +380,13 @@ function chat() {
       });
   }
 
+  function addContactToList(contactId) {
+    $('#contact_list')
+      .append(`<column><button class="button action-button is-big is-outlined is-white is-centered" id="peer_${contactId}"><i class="fas fa-user"></i></button></column>`);
+  }
+
+  addContactToList('TEST');
+
   /**
    * Shows modal for adding a contact
    * TODO: Fix selecting from dropdown on enter
