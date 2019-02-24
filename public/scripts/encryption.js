@@ -331,13 +331,12 @@ const self = module.exports = {
    */
   generatePrivateFingerprint: passphrase => fingerprintJs.getPromise({
     excludes: {
+      enumerateDevices: true,
       screenResolution: true,
       availableScreenResolution: true,
     },
   })
     .then(async (components) => {
-      localStorage.setItem(Date.now()
-        .toString(), components);
       const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
       console.log(`[LOG] Your fingerprint is: ${fingerprintHash}`);
@@ -357,6 +356,7 @@ const self = module.exports = {
    */
   generatePublicFingerprint: () => fingerprintJs.getPromise({
     excludes: {
+      enumerateDevices: true,
       screenResolution: true,
       availableScreenResolution: true,
     },
