@@ -401,6 +401,9 @@ function chat() {
                 </button>
             </column>
         `);
+          $(`[data-peer="${peerObj.peer_id}"]`)
+            .off('click')
+            .on('click', () => connect(peerObj.peer_id));
         }
       });
       $('[data-peer]')

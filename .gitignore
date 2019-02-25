@@ -61,6 +61,8 @@ typings/
 .env
 
 # Custom
+.flooignore
+.floo
 .idea
 dist/*
 deploy.sh
