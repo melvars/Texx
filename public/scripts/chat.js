@@ -271,7 +271,7 @@ function chat() {
   async function receivedMessage(message, self = false) {
     if (self) {
       $('#messages')
-        .append(`<span style="color: green">${message}</span><br>`);
+        .append(`<span style="color: green">${sanitizeText(message)}</span><br>`);
       await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, message, true);
     } else if (message.type === 'text') {
       await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, message.data);
@@ -280,14 +280,14 @@ function chat() {
         await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
       )
         .then(plaintext => $('#messages')
-          .append(`<span>${plaintext}</span><br>`));
+          .append(`<span>${sanitizeText(plaintext)}</span><br>`));
     } else if (message.type === 'decrypted') {
       if (message.self) {
         $('#messages')
-          .append(`<span style="color: green">${message.message} - ${message.time}</span><br>`);
+          .append(`<span style="color: green">${sanitizeText(message.message)} - ${message.time}</span><br>`);
       } else {
         $('#messages')
-          .append(`<span>${message.message} - ${message.time}</span><br>`);
+          .append(`<span>${sanitizeText(message.message)} - ${message.time}</span><br>`);
       }
     } else if (message.type === 'file') {
       await processFile(message);
@@ -305,7 +305,10 @@ function chat() {
    */
   async function sendMessageFromInput() {
     const messageInput = $('#message');
-    await sendMessage(messageInput.val());
+    if (messageInput.val()
+      .replace(/\s/g, '') !== '') {
+      await sendMessage(messageInput.val());
+    }
     messageInput.val('');
   }
 
@@ -347,7 +350,7 @@ function chat() {
     // REMEMBER: Use 'self' instead of 'true' when encrypting files! => TODO: Fix 'self' in files
     await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, fileName, true); // TODO: Store files
     $('#messages')
-      .append(`<a href="${blobUrl}" download="${file.info.name}">${fileName}</a><br>`);
+      .append(`<a href="${blobUrl}" download="${sanitizeText(file.info.name)}">${sanitizeText(fileName)}</a><br>`);
     // TODO: Show file preview
   }
 
@@ -361,6 +364,16 @@ function chat() {
     const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${parseFloat((bytes / (1024 ** i)).toFixed(2))} ${sizes[i]}`;
+  }
+
+  /**
+   * Sanitizes a given string to prevent html/sql/... injection
+   * @param text
+   * @returns {string}
+   */
+  function sanitizeText(text) {
+    return text.replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   /**
@@ -408,10 +421,12 @@ function chat() {
       });
       $('[data-peer]')
         .removeClass('is-success');
-      $(`[data-peer="${connectedPeers[currentPeerIndex].peer}"]`)
-        .addClass('is-success');
+      if (connectedPeers[currentPeerIndex] !== undefined) {
+        $(`[data-peer="${connectedPeers[currentPeerIndex].peer}"]`)
+          .addClass('is-success');
+      }
     } catch (err) {
-      console.error('You don\'t have any friends (yet).');
+      console.error(err);
     }
     console.log('[LOG] Refreshed contact list');
   }
