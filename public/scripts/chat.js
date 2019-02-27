@@ -19,7 +19,6 @@ const pinInput = require('./input_pin');
 // setup vars
 const host = 'meta.marvinborner.de';
 let peerId;
-let call;
 let currentPeerIndex; // defines which peer connection is currently used
 const connectedPeers = [];
 
@@ -102,14 +101,23 @@ function chat() {
   // start the peer
   const peer = new Peer(peerId, {
     host,
-    port: 4242,
+    port: 8080,
     path: '/api',
     secure: true,
     debug: 0,
   });
 
   // Peer events
-  peer.on('call', call => getMediaStream(stream => call.answer(stream))); // TODO: Ask for call accept
+  peer.on('call', (call) => {
+    getMediaStream(stream => call.answer(stream));
+    call.on('stream', (stream) => {
+      const video = document.querySelector('audio');
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+      };
+    });
+  }); // TODO: Ask for call accept
 
   peer.on('open', async (id) => {
     await refreshContactList();
@@ -542,32 +550,20 @@ function chat() {
         });
       $('#call')
         .on('click', () => getMediaStream((stream) => {
-          call = peer.call(peerId, stream); // TODO: Encrypt call
-          initCall(call);
+          peer.call(connectedPeers[currentPeerIndex].peer, stream); // TODO: Encrypt call
         }));
     });
 }
 
+/**
+ * Gets a video and audio stream
+ * @param callback
+ */
 function getMediaStream(callback) {
-  navigator.getUserMedia(
-    {
-      audio: true,
-      video: {
-        width: 1280,
-        height: 720,
-      },
-    },
-    stream => callback(stream),
-    err => console.error(err),
-  );
-}
-
-function initCall(call) {
-  call.on('stream', (stream) => {
-    const video = document.querySelector('video');
-    video.srcObject = stream;
-    video.onloadedmetadata = () => {
-      video.play();
-    };
-  });
+  navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: false, // REMEMBER: Activate video stream
+  })
+    .then(stream => callback(stream))
+    .catch(err => console.error(err.message));
 }
