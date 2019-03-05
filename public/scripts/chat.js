@@ -533,7 +533,7 @@ function chat() {
         .on('click', () => addContact());
       $('#logout')
         .on('click', () => {
-          connectedPeers[currentPeerIndex].close();
+          if (currentPeerIndex in connectedPeers) connectedPeers[currentPeerIndex].close();
           location.reload(true);
         });
       $('#delete')
