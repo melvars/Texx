@@ -14,7 +14,7 @@
     "npm": ">=3.10.0"
   },
   "scripts": {
-    "dev": "npm run watch & nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
+    "dev": "npm run watch & nodemon app.js --exec \"node -r dotenv/config -r babel-register\"",
     "watch": "npm run debug && onchange public/styles/* -- npm run css & onchange public/scripts/* -- npm run debug",
     "css": "node-sass public/styles/main.sass dist/app.css && cp public/images/* dist/",
     "debug": "rm -r dist/* && npm run css && browserify public/scripts/main.js -o dist/app.js",

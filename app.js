@@ -1,29 +1,32 @@
 /*
- * index.js
+ * app.js
  * Copyright (c) 2019, Texx
  * License: MIT
  *     See https://github.com/texxme/Texx/blob/master/LICENSE
  */
 
 import { ExpressPeerServer } from 'peer';
-import express from 'express';
+import express, { Router } from 'express';
 import path from 'path';
 import logger from 'morgan';
 import bodyParser from 'body-parser';
-import routes from './routes';
 
 const app = express();
 app.disable('x-powered-by');
 
+const routes = Router();
 const server = app.listen(8080, '0.0.0.0');
 const peerServer = ExpressPeerServer(server, { debug: true });
 
 peerServer.on('connection', id => console.log(`New connection: ${id}`));
 
+routes.get('/', (req, res) => {
+  res.render('index');
+});
 app.use('/api', peerServer);
 
 // View engine setup
-app.set('views', path.join(__dirname, '../views'));
+app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
 app.use(logger('dev', {
@@ -31,7 +34,7 @@ app.use(logger('dev', {
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, '../dist')));
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // Routes
 app.use('/', routes);
