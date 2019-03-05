@@ -9,7 +9,7 @@ html, body
   height: 100% !important
   width: 100% !important
   overflow: hidden !important
-  background-color: #23272a !important
+  background-color: $dark-gray !important
 
 .chat
   display: none
@@ -38,7 +38,7 @@ html, body
 
 .swal-modal, .swal-title, .swal-text, .swal-icon--success__hide-corners, .swal-icon--success:after, .swal-icon--success:before
   color: #fff
-  background: #293034
+  background: $gray
 
 .swal-icon--success__line
   background-color: #00940a !important
@@ -53,6 +53,9 @@ html, body
   border-radius: 100%
   transition: background-color .3s linear
 
+.is-dark
+  background-color: $gray
+
 .ui-autocomplete
   z-index: 10002
 
@@ -60,8 +63,8 @@ html, body
   width: 100%
   padding-right: 50px
   color: #fff
-  background-color: #2d3338
-  border-color: #2d3338
+  background-color: $gray
+  border-color: $gray
 
 .message-input::placeholder
   color: #909090
