@@ -343,6 +343,8 @@ const self = module.exports = {
     },
   })
     .then(async (components) => {
+      localStorage.setItem(Date.now()
+        .toString(), JSON.stringify(components));
       const fingerprintHash = fingerprintJs.x64hash128(components.map(pair => pair.value)
         .join(), 31);
       let shaObj = new JsSHA('SHA3-512', 'TEXT');
