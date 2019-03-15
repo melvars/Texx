@@ -8,7 +8,6 @@
 // general imports
 const $ = jQuery = require('jquery');
 require('jquery-ui-bundle');
-const util = require('util');
 const swal = require('sweetalert');
 const xkcdPassword = require('xkcd-password');
 const dragDrop = require('drag-drop');
@@ -20,6 +19,7 @@ const pinInput = require('./input_pin');
 const host = 'meta.marvinborner.de';
 let peerId;
 let currentPeerIndex; // defines which peer connection is currently used
+let currentChatWindow;
 const connectedPeers = [];
 
 // setup generator
@@ -147,52 +147,75 @@ function chat() {
   });
 
   // This event gets fired when the initiator wants to connect to the peer
-  peer.on('connection', (conn) => {
-    swal({
-      title: 'Connection request',
-      text: `The user "${conn.peer}" wants to connect to you.\nThis gets cancelled in 3 seconds.`,
-      timer: 3000,
-      icon: 'info',
-      buttons: true,
-    })
-      .then(async (accepted) => {
-        if (accepted) {
-          currentPeerIndex = connectedPeers.length + 1;
-          connectedPeers[currentPeerIndex] = conn;
-          connectedPeers[currentPeerIndex].send({
-            type: 'state',
-            data: 'accepted',
-          });
-          connectedPeers[currentPeerIndex].on('data', async (data) => {
-            if (data.type === 'state' && data.data === 'received') {
-              console.log('[LOG] Connected to', connectedPeers[currentPeerIndex].peer);
+  peer.on('connection', async (conn) => {
+    /**
+     * Processes the connection after a declined/accepted connection request
+     * @param accepted
+     * @returns {Promise<void>}
+     */
+    const processVerification = async (accepted) => {
+      if (accepted) {
+        currentPeerIndex = connectedPeers.length + 1;
+        connectedPeers[currentPeerIndex] = conn;
+        connectedPeers[currentPeerIndex].send({
+          type: 'state',
+          data: 'accepted',
+        });
+        console.log(`[LOG] Accepted connection request of ${connectedPeers[currentPeerIndex].peer}`);
+        connectedPeers[currentPeerIndex].on('data', async (data) => {
+          if (data.type === 'state' && data.data === 'received') {
+            console.log('[LOG] Connected to', connectedPeers[currentPeerIndex].peer);
+            if (await encryption.getPeerPublicKey(conn.peer) === '') {
               swal(
                 'New connection!',
                 `You have successfully connected to the user "${connectedPeers[currentPeerIndex].peer}"!`,
                 'success',
               );
-              encryption.getMessages(
-                connectedPeers[currentPeerIndex].peer,
-                await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
-              )
-                .then(messages => messages.forEach(async (messageData) => {
-                  await receivedMessage(messageData);
-                }));
-              transferKey(await encryption.getPublicKey());
-            } else if (data.type !== 'state') {
-              console.log('[LOG] Received new message!');
-              await receivedMessage(data);
             }
-          });
-        } else {
-          console.log(`[LOG] Declined connection request of ${conn.peer}`);
-          conn.send({
-            type: 'state',
-            data: 'declined',
-          });
-          // .then(() => conn.close()); TODO: Add promise for connection closing
-        }
-      });
+            encryption.getMessages(
+              connectedPeers[currentPeerIndex].peer,
+              await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
+            )
+              .then(messages => messages.forEach(async (messageData) => {
+                await renderMessage(messageData);
+              }));
+
+            setChatWindow();
+            transferKey(await encryption.getPublicKey());
+          } else if (data.type !== 'state') {
+            console.log('[LOG] Received new message!');
+            await renderMessage(data);
+          }
+        });
+      } else {
+        console.log(`[LOG] Declined connection request of ${conn.peer}`);
+        conn.send({
+          type: 'state',
+          data: 'declined',
+        });
+        // .then(() => conn.close()); TODO: Add promise for connection closing
+      }
+    };
+
+    if (await encryption.getPeerPublicKey(conn.peer) === '') {
+      // Asks if peer is unknown
+      console.log('[LOG] Connection request of unknown peer');
+      swal({
+        title: 'Connection request',
+        text: `The user "${conn.peer}" wants to connect to you.\nThis gets cancelled in 3 seconds.`,
+        timer: 3000,
+        icon: 'info',
+        buttons: true,
+      })
+        .then(accepted => processVerification(accepted));
+    } else {
+      // Peer is already known
+      console.log('[LOG] Connection request of known peer');
+      // emulate waiting time // TODO: Fix waiting time of known peer?
+      setTimeout(async () => {
+        await processVerification(true);
+      }, 100);
+    }
   });
 
   /**
@@ -214,14 +237,17 @@ function chat() {
           data: 'received',
         });
         console.log('[LOG] Connected to', connectedPeers[currentPeerIndex].peer);
-        swal(`Successfully connected to "${connectedPeers[currentPeerIndex].peer}"!`, '', 'success');
+        if (await encryption.getPeerPublicKey(conn.peer) === '') {
+          swal(`Successfully connected to "${connectedPeers[currentPeerIndex].peer}"!`, '', 'success');
+        }
+        setChatWindow();
         transferKey(await encryption.getPublicKey());
         encryption.getMessages(
           connectedPeers[currentPeerIndex].peer,
           await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
         )
           .then(messages => messages.forEach(async (messageData) => {
-            await receivedMessage(messageData);
+            await renderMessage(messageData);
           }));
         connectedPeers[currentPeerIndex].on('close', async () => {
           await refreshContactList();
@@ -232,7 +258,7 @@ function chat() {
         conn.close();
       } else {
         console.log('[LOG] Received new message!');
-        await receivedMessage(data);
+        await renderMessage(data);
       }
     });
   }
@@ -252,7 +278,7 @@ function chat() {
           await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
         ),
       });
-      await receivedMessage(message, true);
+      await renderMessage(message, true);
     } catch (err) {
       console.error(err);
       swal('Not connected!', 'You aren\'t connected to another peer right now.', 'error');
@@ -272,13 +298,28 @@ function chat() {
   }
 
   /**
+   * Displays the correct chat window
+   */
+  function setChatWindow() {
+    if ($(`#message_window_wrapper div[id=${currentPeerIndex}]`).length === 0) {
+      $('#message_window_wrapper > *')
+        .fadeOut();
+      $('#message_window_wrapper')
+        .append(`<div id="${currentPeerIndex}"></div>`);
+      currentChatWindow = $(`#message_window_wrapper div[id=${currentPeerIndex}]`);
+    } else {
+      currentChatWindow = $(`#message_window_wrapper div[id=${currentPeerIndex}]`);
+    }
+  }
+
+  /**
    * Renders and processes the incoming messages
    * @param message
    * @param self
    */
-  async function receivedMessage(message, self = false) {
+  async function renderMessage(message, self = false) {
     if (self) {
-      $('#messages')
+      currentChatWindow
         .append(`<span style="color: green">${sanitizeText(message)}</span><br>`);
       await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, message, true);
     } else if (message.type === 'text') {
@@ -287,14 +328,14 @@ function chat() {
         message.data,
         await encryption.getPeerPublicKey(connectedPeers[currentPeerIndex].peer),
       )
-        .then(plaintext => $('#messages')
+        .then(plaintext => currentChatWindow
           .append(`<span>${sanitizeText(plaintext)}</span><br>`));
     } else if (message.type === 'decrypted') {
       if (message.self) {
-        $('#messages')
+        currentChatWindow
           .append(`<span style="color: green">${sanitizeText(message.message)} - ${message.time}</span><br>`);
       } else {
-        $('#messages')
+        currentChatWindow
           .append(`<span>${sanitizeText(message.message)} - ${message.time}</span><br>`);
       }
     } else if (message.type === 'file') {
@@ -337,7 +378,7 @@ function chat() {
             },
             data: file,
           };
-          await processFile(fileObj, true);
+          await processFile(fileObj);
           connectedPeers[currentPeerIndex].send(fileObj);
           console.log('[LOG] File sent!'); // TODO: Make it async!
         });
@@ -348,16 +389,16 @@ function chat() {
   /**
    * Processes a received/sent file
    * @param file
-   * @param self
    */
-  async function processFile(file, self = false) {
+  async function processFile(file) {
     console.log(file.info);
     const blob = new Blob([file.data], { type: file.info.type });
     const blobUrl = URL.createObjectURL(blob);
     const fileName = `${file.info.name} (${formatBytes(file.info.size)})`;
     // REMEMBER: Use 'self' instead of 'true' when encrypting files! => TODO: Fix 'self' in files
-    await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, fileName, true); // TODO: Store files
-    $('#messages')
+    // TODO: Store files
+    await encryption.storeMessage(connectedPeers[currentPeerIndex].peer, fileName, true);
+    currentChatWindow
       .append(`<a href="${blobUrl}" download="${sanitizeText(file.info.name)}">${sanitizeText(fileName)}</a><br>`);
     // TODO: Show file preview
   }
@@ -567,3 +608,5 @@ function getMediaStream(callback) {
     .then(stream => callback(stream))
     .catch(err => console.error(err.message));
 }
+
+window.$ = $;
