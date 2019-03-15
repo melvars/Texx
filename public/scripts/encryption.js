@@ -337,9 +337,13 @@ const self = module.exports = {
    */
   generatePrivateFingerprint: passphrase => fingerprintJs.getPromise({
     excludes: {
+      // TODO: Use more reliable fingerprinting method
       enumerateDevices: true,
       screenResolution: true,
       availableScreenResolution: true,
+      webglVendorAndRenderer: true,
+      userAgent: true,
+      webgl: true,
     },
   })
     .then(async (components) => {
@@ -366,6 +370,9 @@ const self = module.exports = {
       enumerateDevices: true,
       screenResolution: true,
       availableScreenResolution: true,
+      webglVendorAndRenderer: true,
+      userAgent: true,
+      webgl: true,
     },
   })
     .then(async (components) => {
