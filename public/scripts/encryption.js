@@ -344,6 +344,7 @@ const self = module.exports = {
       webglVendorAndRenderer: true,
       userAgent: true,
       webgl: true,
+      pixelRatio: true,
     },
   })
     .then(async (components) => {
@@ -373,6 +374,7 @@ const self = module.exports = {
       webglVendorAndRenderer: true,
       userAgent: true,
       webgl: true,
+      pixelRatio: true,
     },
   })
     .then(async (components) => {
