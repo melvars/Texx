@@ -137,7 +137,7 @@ function chat() {
     } else if (err.type === 'peer-unavailable') {
       swal('Peer could not be found!', '', 'error');
     } else if (err.type === 'unavailable-id') {
-      swal('Ou snap! Your ID isn\'t available!', '', 'error');
+      swal('Oh snap! Your ID isn\'t available!', '', 'error');
     } else if (err.type === 'disconnected') {
       swal('Not connected to the server!', 'Please reconnect using the anonymize button.', 'error');
     } else {
@@ -473,14 +473,15 @@ function chat() {
         if (!$(`[data-peer="${peerObj.peer_id}"]`).length) { // Contact isn't already there
           $('#contact_list')
             .append(`
-            <column>
-                <button
-                    class="button action-button is-big is-outlined is-white" 
-                    data-peer="${peerObj.peer_id}">
-                    <i class="fas fa-user"></i>
-                </button>
-            </column>
-        `);
+                <column>
+                    <button
+                        class="button action-button is-big is-outlined is-white tooltip" 
+                        data-peer="${peerObj.peer_id}"
+                        data-tooltip="${peerObj.peer_id.split('-').map(text => text[0]).join('')}">
+                        <i class="fas fa-user"></i>
+                    </button>
+                </column>
+            `);
           $(`[data-peer="${peerObj.peer_id}"]`)
             .off('click')
             .on('click', () => connect(peerObj.peer_id));
